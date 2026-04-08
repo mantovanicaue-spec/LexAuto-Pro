@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Folder, PenTool, LayoutTemplate, Database, Calculator, Zap, HelpCircle } from "lucide-react";
+import { Folder, PenTool, LayoutTemplate, Database, Calculator, Zap, HelpCircle, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
 
   const navItems = [
     { section: "Modelos" },
@@ -20,6 +22,10 @@ export function Sidebar() {
     { href: "/ajuda", label: "Guia de Uso", icon: HelpCircle },
     { section: "Conta" },
     { href: "/upgrade", label: "Upgrade para PRO", icon: Zap },
+    ...(isAdmin ? [
+      { section: "Administração" },
+      { href: "/admin", label: "Painel de Controle", icon: ShieldAlert },
+    ] : [])
   ];
 
   return (

@@ -8,16 +8,21 @@ import { useRouter, usePathname } from "next/navigation";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAdmin: boolean;
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true, signOut: async () => {} });
+const ADMIN_EMAIL = "mantovanicaue@gmail.com";
+
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true, isAdmin: false, signOut: async () => {} });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
     // Caso seja ambiente de desenvolvimento sem chaves reais configuradas:
@@ -59,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, signOut }}>
       {children}
     </AuthContext.Provider>
   );

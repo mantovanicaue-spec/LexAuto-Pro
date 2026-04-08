@@ -5,6 +5,32 @@ import { Zap, Download, FileText } from "lucide-react";
 
 export default function GerarPeticoes() {
   const [formato, setFormato] = useState<"docx" | "pdf">("docx");
+  const [promptTexto, setPromptTexto] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [resultado, setResultado] = useState("");
+
+  const handleGenerate = async () => {
+    if (!promptTexto.trim()) return alert("Descreva o caso primeiro.");
+    setIsGenerating(true);
+    setResultado("");
+    
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptTexto })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      
+      setResultado(data.result);
+    } catch (err: any) {
+      alert("Erro: " + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -60,8 +86,12 @@ export default function GerarPeticoes() {
             </div>
           </div>
           
-          <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-[3px] text-[0.8rem] font-semibold tracking-wider uppercase bg-gold text-white hover:bg-gold-light transition-all shadow-md">
-            <Zap size={18} /> Gerar com IA
+          <button 
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-[3px] text-[0.8rem] font-semibold tracking-wider uppercase bg-gold text-white hover:bg-gold-light transition-all shadow-md disabled:opacity-50"
+          >
+            <Zap size={18} /> {isGenerating ? "Processando IA..." : "Gerar com IA"}
           </button>
         </div>
 
@@ -75,6 +105,8 @@ export default function GerarPeticoes() {
                 rows={6}
                 placeholder="Descreva brevemente os fatos. Ex: Cliente comprou carro na concessionária e veio com defeito no motor..."
                 className="w-full font-sans text-sm p-3 border border-[#F5C842] rounded bg-white text-ink outline-none block resize-y"
+                value={promptTexto}
+                onChange={e => setPromptTexto(e.target.value)}
               ></textarea>
               <div className="mt-2 text-xs text-muted">
                 A IA usará o modelo definido e o ajustará de forma robusta e técnica para este caso específico.
@@ -82,10 +114,18 @@ export default function GerarPeticoes() {
             </div>
 
             <div className="bg-white border border-border rounded p-6 shadow-sm min-h-[300px] flex flex-col items-center justify-center text-center">
-              <div className="text-muted opacity-50 mb-2">
-                <FileText size={48} className="mx-auto" />
-              </div>
-              <div className="text-sm">A sua petição gerada aparecerá aqui.</div>
+              {resultado ? (
+                 <div className="w-full h-full text-left font-mono text-sm text-ink whitespace-pre-wrap leading-relaxed overflow-y-auto">
+                   {resultado}
+                 </div>
+              ) : (
+                <>
+                  <div className="text-muted opacity-50 mb-2">
+                    <FileText size={48} className="mx-auto" />
+                  </div>
+                  <div className="text-sm text-muted">A sua petição gerada aparecerá aqui.</div>
+                </>
+              )}
             </div>
         </div>
       </div>

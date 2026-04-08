@@ -18,6 +18,8 @@ export function Sidebar() {
     { href: "/gerar", label: "Gerar Petições", icon: Zap },
     { section: "Ajuda" },
     { href: "/ajuda", label: "Guia de Uso", icon: HelpCircle },
+    { section: "Conta" },
+    { href: "/upgrade", label: "Upgrade para PRO", icon: Zap },
   ];
 
   return (

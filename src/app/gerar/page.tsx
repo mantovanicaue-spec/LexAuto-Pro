@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, Download } from "lucide-react";
+import { Zap, Download, FileText } from "lucide-react";
 
 export default function GerarPeticoes() {
   const [formato, setFormato] = useState<"docx" | "pdf">("docx");

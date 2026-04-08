@@ -1,0 +1,2393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexAuto Pro — Gerador de Petições</title>
+
+<!-- Dependências externas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- jsPDF para geração de PDF no browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink: #0f0e0c;
+  --parchment: #f5f0e8;
+  --cream: #ede8dc;
+  --gold: #b8963e;
+  --gold-light: #d4af5a;
+  --gold-pale: #f5edd6;
+  --red: #8b2020;
+  --green: #2a6b3a;
+  --blue: #1a4b8b;
+  --muted: #6b6456;
+  --border: #d4c9b0;
+  --shadow: rgba(15,14,12,0.1);
+  --sidebar-w: 272px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--parchment);color:var(--ink);min-height:100vh;}
+
+/* HEADER */
+header{position:fixed;top:0;left:0;right:0;height:54px;background:var(--ink);border-bottom:2px solid var(--gold);display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;z-index:200;}
+.logo{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:var(--gold);letter-spacing:.04em;}
+.logo span{color:#fff;font-weight:400;}
+.logo sup{font-size:.5rem;background:var(--gold);color:#fff;padding:.1rem .3rem;border-radius:2px;vertical-align:super;letter-spacing:.08em;font-family:'DM Mono',monospace;}
+.header-tag{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:#777;font-family:'DM Mono',monospace;}
+
+/* LAYOUT */
+.app-body{display:flex;margin-top:54px;min-height:calc(100vh - 54px);}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:#181612;border-right:1px solid #2a2720;display:flex;flex-direction:column;position:fixed;top:54px;bottom:0;left:0;overflow-y:auto;z-index:100;}
+.sb-section{padding:.7rem 1rem .35rem;font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:#555;font-family:'DM Mono',monospace;}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.62rem 1.2rem;cursor:pointer;font-size:.8rem;font-weight:500;color:#999;transition:all .15s;border-left:3px solid transparent;user-select:none;}
+.nav-item:hover{background:#22201a;color:#fff;}
+.nav-item.active{background:#1d1b14;color:var(--gold);border-left-color:var(--gold);}
+.nav-item .icon{font-size:.9rem;width:18px;text-align:center;}
+.sb-divider{height:1px;background:#2a2720;margin:.4rem 0;}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);flex:1;padding:2rem 2.5rem;max-width:980px;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* PAGE HEADER */
+.page-hd{margin-bottom:1.8rem;}
+.page-title{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:700;margin-bottom:.3rem;}
+.page-sub{font-size:.83rem;color:var(--muted);line-height:1.5;}
+
+/* CARD */
+.card{background:#fff;border:1px solid var(--border);border-radius:4px;padding:1.5rem;margin-bottom:1.3rem;box-shadow:0 2px 8px var(--shadow);}
+.card-hd{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:.9rem;font-family:'DM Mono',monospace;display:flex;align-items:center;gap:.5rem;}
+.card-hd::after{content:'';flex:1;height:1px;background:var(--gold-pale);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.58rem 1.1rem;border-radius:3px;font-size:.76rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border:none;transition:all .16s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.btn-gold{background:var(--gold);color:#fff;} .btn-gold:hover{background:var(--gold-light);}
+.btn-dark{background:var(--ink);color:var(--gold);} .btn-dark:hover{background:#2a2820;}
+.btn-blue{background:var(--blue);color:#fff;} .btn-blue:hover{background:#1e5aaa;}
+.btn-red{background:var(--red);color:#fff;} .btn-red:hover{background:#a52828;}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border);} .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid transparent;} .btn-ghost:hover{color:var(--red);border-color:var(--red);}
+.btn-sm{padding:.35rem .75rem;font-size:.68rem;}
+.btn-xs{padding:.22rem .5rem;font-size:.63rem;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-group{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;}
+
+/* FORMATO DOWNLOAD — toggle buttons */
+.format-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-bottom:.5rem;}
+.fmt-btn{flex:1;padding:.55rem .8rem;text-align:center;cursor:pointer;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:#fff;border-right:1px solid var(--border);transition:all .15s;user-select:none;font-family:'DM Sans',sans-serif;}
+.fmt-btn:last-child{border-right:none;}
+.fmt-btn.active{background:var(--gold);color:#fff;border-color:var(--gold);}
+.fmt-btn:hover:not(.active){background:var(--cream);}
+
+/* FORMS */
+textarea,input[type=text],select{width:100%;font-family:'DM Mono',monospace;font-size:.8rem;padding:.72rem .9rem;border:1px solid var(--border);border-radius:3px;background:var(--parchment);color:var(--ink);outline:none;transition:border-color .18s;}
+textarea:focus,input:focus,select:focus{border-color:var(--gold);}
+textarea{resize:vertical;line-height:1.75;}
+label{display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.32rem;letter-spacing:.04em;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:.9rem;}
+.form-group{margin-bottom:.9rem;}
+
+/* VARS */
+.vars-bar{display:flex;flex-wrap:wrap;gap:.38rem;margin-bottom:.65rem;}
+.var-tag{background:var(--gold-pale);border:1px solid #e0c98a;border-radius:2px;padding:.2rem .5rem;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--gold);cursor:pointer;transition:all .13s;user-select:none;}
+.var-tag:hover{background:var(--gold);color:#fff;}
+
+/* MODELOS GRID */
+.modelos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;margin-bottom:1.4rem;}
+.mc{background:#fff;border:1px solid var(--border);border-radius:4px;padding:1.1rem;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;gap:.42rem;}
+.mc:hover{border-color:var(--gold);box-shadow:0 4px 14px var(--shadow);}
+.mc-name{font-weight:600;font-size:.87rem;}
+.mc-desc{font-size:.72rem;color:var(--muted);line-height:1.35;}
+.mc-meta{font-size:.64rem;font-family:'DM Mono',monospace;color:#bbb;}
+.mc-actions{display:flex;gap:.35rem;margin-top:.35rem;}
+.modelo-empty{border:2px dashed var(--border);border-radius:4px;padding:2.8rem;text-align:center;color:var(--muted);}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:4px;padding:1.8rem;text-align:center;cursor:pointer;transition:all .18s;background:var(--parchment);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--gold);background:var(--gold-pale);}
+.upload-icon{font-size:2rem;margin-bottom:.5rem;}
+.upload-text{font-size:.83rem;color:var(--muted);}
+.upload-text strong{color:var(--gold);}
+input[type=file]{display:none;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:3px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:.78rem;}
+thead{background:var(--ink);color:var(--gold);}
+th{padding:.6rem .85rem;text-align:left;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;font-weight:500;white-space:nowrap;}
+td{padding:.55rem .85rem;border-bottom:1px solid var(--cream);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#faf7f0;}
+.badge{display:inline-block;padding:.16rem .45rem;border-radius:2px;font-size:.62rem;font-weight:600;letter-spacing:.04em;}
+.badge-gold{background:var(--gold-pale);color:var(--gold);}
+
+/* STATS */
+.stats-bar{display:flex;background:var(--ink);border-radius:4px;overflow:hidden;margin-bottom:1.3rem;}
+.stat{flex:1;text-align:center;padding:.8rem .5rem;border-right:1px solid #2a2720;}
+.stat:last-child{border-right:none;}
+.stat-val{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--gold);line-height:1;}
+.stat-label{font-size:.6rem;color:#888;text-transform:uppercase;letter-spacing:.1em;margin-top:.2rem;font-family:'DM Mono',monospace;}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(15,14,12,.65);z-index:300;padding:2rem;overflow-y:auto;}
+.overlay.open{display:flex;align-items:flex-start;justify-content:center;}
+.modal{background:#fff;border:1px solid var(--border);border-radius:4px;width:100%;max-width:800px;margin:auto;box-shadow:0 16px 48px rgba(0,0,0,.28);animation:slideUp .2s ease;}
+@keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.5rem;border-bottom:1px solid var(--border);background:var(--ink);border-radius:4px 4px 0 0;}
+.modal-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);}
+.modal-x{background:none;border:none;color:#888;cursor:pointer;font-size:1.3rem;line-height:1;transition:color .14s;}
+.modal-x:hover{color:#fff;}
+.modal-body{padding:1.5rem;}
+.modal-ft{padding:.85rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.6rem;justify-content:space-between;align-items:center;background:var(--cream);border-radius:0 0 4px 4px;}
+
+/* PREVIEW */
+.preview-text{font-family:'DM Mono',monospace;font-size:.76rem;line-height:1.85;white-space:pre-wrap;background:var(--parchment);border:1px solid var(--border);border-radius:3px;padding:1.3rem;max-height:55vh;overflow-y:auto;color:var(--ink);}
+
+/* INLINE TABS */
+.inline-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.1rem;}
+.itab{padding:.5rem 1rem;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .14s;}
+.itab:hover{color:var(--ink);}
+.itab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.ipanel{display:none;}
+.ipanel.active{display:block;}
+
+/* INFO BOX */
+.info-box{background:var(--gold-pale);border:1px solid #e0c98a;border-radius:3px;padding:.85rem 1rem;font-size:.78rem;color:var(--ink);line-height:1.6;margin-bottom:1.1rem;}
+.info-box strong{color:var(--gold);}
+.info-box code{background:#fff;border:1px solid var(--border);border-radius:2px;padding:.08rem .28rem;font-family:'DM Mono',monospace;font-size:.7rem;}
+.link-gold{color:var(--gold);cursor:pointer;text-decoration:underline;font-size:.78rem;}
+
+/* PROGRESS */
+.progress-wrap{background:var(--cream);border-radius:4px;height:8px;overflow:hidden;margin:.6rem 0;}
+.progress-bar{height:100%;background:var(--gold);border-radius:4px;transition:width .3s ease;}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--ink);color:#fff;padding:.75rem 1.2rem;border-radius:4px;border-left:4px solid var(--gold);font-size:.78rem;z-index:500;transform:translateY(60px);opacity:0;transition:all .28s ease;max-width:300px;line-height:1.4;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.err{border-left-color:var(--red);}
+.toast.ok{border-left-color:#4caf50;}
+
+/* SPINNER */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:720px){
+  .sidebar{transform:translateX(-100%);}
+  .main{margin-left:0;padding:1.1rem;}
+  .form-row{grid-template-columns:1fr;}
+  .modelos-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Lex<span>Auto</span><sup>PRO</sup></div>
+  <div class="header-tag" id="headerStatus">Pronto</div>
+</header>
+
+<div class="app-body">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-divider" style="margin-top:.8rem;"></div>
+  <div class="sb-section">Modelos</div>
+  <div class="nav-item active" onclick="goTo('v-modelos')" id="nav-v-modelos"><span class="icon">📁</span> Meus Modelos</div>
+  <div class="nav-item" onclick="goTo('v-editor')" id="nav-v-editor"><span class="icon">✏️</span> Editor de Modelo</div>
+  <div class="nav-item" onclick="goTo('v-template')" id="nav-v-template"><span class="icon">🏛️</span> Template Visual</div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">Geração</div>
+  <div class="nav-item" onclick="goTo('v-dados')" id="nav-v-dados"><span class="icon">📊</span> Importar Dados</div>
+  <div class="nav-item" onclick="goTo('v-atualizacao')" id="nav-v-atualizacao"><span class="icon">🧮</span> Atualização de Valores</div>
+  <div class="nav-item" onclick="goTo('v-gerar')" id="nav-v-gerar"><span class="icon">⚡</span> Gerar Petições</div>
+  <div class="sb-divider"></div>
+  <div class="sb-section">Ajuda</div>
+  <div class="nav-item" onclick="goTo('v-ajuda')" id="nav-v-ajuda"><span class="icon">❓</span> Guia de Uso</div>
+</nav>
+
+<main class="main">
+
+<!-- ══ MEUS MODELOS ══════════════════════════════ -->
+<div class="view active" id="v-modelos">
+  <div class="page-hd">
+    <div class="page-title">Meus Modelos de Petição</div>
+    <div class="page-sub">Gerencie seus modelos salvos. Clique em um para editar ou usar na geração.</div>
+  </div>
+  <div class="btn-group" style="margin-bottom:1.4rem;">
+    <button class="btn btn-gold" onclick="novoModelo()">＋ Novo Modelo</button>
+  </div>
+  <div id="modelosGrid"></div>
+</div>
+
+<!-- ══ EDITOR ════════════════════════════════════ -->
+<div class="view" id="v-editor">
+  <div class="page-hd">
+    <div class="page-title" id="edTitle">Novo Modelo</div>
+    <div class="page-sub">Crie ou edite um modelo. Use as variáveis dinâmicas onde quiser que os dados sejam substituídos.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">Identificação</div>
+    <div class="form-row">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Nome do Modelo *</label>
+        <input type="text" id="edNome" placeholder="Ex: Execução Extrajudicial — Padrão">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Tipo de Ação</label>
+        <input type="text" id="edTipo" placeholder="Ex: Execução, Monitória, Cível...">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">Texto do Modelo</div>
+    <div class="inline-tabs">
+      <div class="itab active" onclick="itab('imp','digitar')">✏️ Digitar / Colar</div>
+      <div class="itab" onclick="itab('imp','importar')">📄 Importar .docx / .txt</div>
+    </div>
+
+    <div class="ipanel active" id="imp-digitar">
+      <div class="vars-bar">
+        <span style="font-size:.65rem;color:var(--muted);align-self:center;font-family:'DM Mono',monospace;margin-right:.2rem;">Inserir:</span>
+        <div class="var-tag" onclick="iv('{{COMARCA}}')">{{COMARCA}}</div>
+        <div class="var-tag" onclick="iv('{{CLIENTE}}')">{{CLIENTE}}</div>
+        <div class="var-tag" onclick="iv('{{EXECUTADO}}')">{{EXECUTADO}}</div>
+        <div class="var-tag" onclick="iv('{{CPF}}')">{{CPF}}</div>
+        <div class="var-tag" onclick="iv('{{ENDERECO}}')">{{ENDERECO}}</div>
+        <div class="var-tag" onclick="iv('{{VALOR}}')">{{VALOR}}</div>
+        <div class="var-tag" onclick="iv('{{VALOR_EXTENSO}}')">{{VALOR_EXTENSO}}</div>
+        <div class="var-tag" onclick="iv('{{DATA}}')">{{DATA}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{VALOR_ATUALIZADO}}')">{{VALOR_ATUALIZADO}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{VALOR_ATUALIZADO_EXTENSO}}')">{{VALOR_ATUALIZADO_EXTENSO}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{VALOR_JUROS}}')">{{VALOR_JUROS}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{VALOR_MULTA}}')">{{VALOR_MULTA}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{VALOR_HONORARIOS}}')">{{VALOR_HONORARIOS}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{DATA_VENCIMENTO}}')">{{DATA_VENCIMENTO}}</div>
+        <div class="var-tag" style="border-color:#a8d5a2;color:#2e7d32;background:#f0faf3;" onclick="iv('{{DATA_ATUALIZACAO}}')">{{DATA_ATUALIZACAO}}</div>
+        <div class="var-tag" style="border-color:#c8a84b;color:#7a5c00;background:#fdf8ec;" onclick="iv('{{VALOR_ORIGINAL}}')">{{VALOR_ORIGINAL}}</div>
+        <div class="var-tag" style="border-color:#c8a84b;color:#7a5c00;background:#fdf8ec;" onclick="iv('{{VALOR_ORIGINAL_EXTENSO}}')">{{VALOR_ORIGINAL_EXTENSO}}</div>
+      </div>
+      <textarea id="edTexto" rows="22" placeholder="Digite ou cole o texto do modelo aqui..."></textarea>
+    </div>
+
+    <div class="ipanel" id="imp-importar">
+      <div class="info-box">
+        <strong>Formatos aceitos:</strong> .docx (Word), .txt<br>
+        O texto será extraído. Após importar, posicione as <strong>variáveis dinâmicas</strong> nos lugares corretos e salve.
+      </div>
+      <div class="upload-zone" id="docZone"
+           ondragover="dragOver(event,'docZone')" ondragleave="dragLeave('docZone')" ondrop="dropDoc(event)"
+           onclick="document.getElementById('docFile').click()">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text"><strong>Clique</strong> ou arraste o arquivo aqui<br><small>.docx · .txt</small></div>
+      </div>
+      <input type="file" id="docFile" accept=".docx,.txt" onchange="importDoc(this)">
+      <div id="importPrev" style="display:none;margin-top:1rem;">
+        <div class="info-box">✅ Texto extraído. Revise, insira as variáveis e clique em <strong>"Usar este Texto"</strong>.</div>
+        <textarea id="importPrevText" rows="12"></textarea>
+        <div class="btn-group" style="margin-top:.65rem;">
+          <button class="btn btn-gold btn-sm" onclick="usarImportado()">✔ Usar este Texto</button>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('importPrev').style.display='none'">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-gold" onclick="salvarModelo()">💾 Salvar Modelo</button>
+    <button class="btn btn-outline" onclick="carregarExemplo()">📋 Inserir Exemplo</button>
+    <button class="btn btn-ghost" style="margin-left:auto;" onclick="goTo('v-modelos')">← Voltar</button>
+  </div>
+</div>
+
+<!-- ══ TEMPLATE VISUAL ════════════════════════════ -->
+<div class="view" id="v-template">
+  <div class="page-hd">
+    <div class="page-title">Template Visual</div>
+    <div class="page-sub">Importe seu arquivo Word ou PDF com a logo e o rodapé do escritório. O sistema extrairá cabeçalho, rodapé e imagens e os aplicará em todos os documentos gerados.</div>
+  </div>
+
+  <div class="info-box" style="border-color:#b8e0c0;background:#edf7f0;">
+    ✅ <strong>Template Dentrix embutido e ativo.</strong> O modelo <strong>0rthodontic_DENTRIX</strong> está incorporado diretamente ao sistema com logo, rodapé, formatação Century Gothic 10pt, espaçamento 1,5 e todas as margens originais. Todos os documentos Word gerados serão <strong>idênticos ao modelo original</strong> — sem necessidade de importar nada.
+  </div>
+
+  <div class="card">
+    <div class="card-hd">Importar Template</div>
+    <div class="upload-zone" id="tplZone"
+         ondragover="dragOver(event,'tplZone')" ondragleave="dragLeave('tplZone')" ondrop="dropTemplate(event)"
+         onclick="document.getElementById('tplFile').click()">
+      <div class="upload-icon">🏛️</div>
+      <div class="upload-text"><strong>Clique</strong> ou arraste seu template aqui<br><small>.docx (recomendado) · .pdf</small></div>
+    </div>
+    <input type="file" id="tplFile" accept=".docx,.pdf" onchange="importTemplate(this)">
+  </div>
+
+  <div id="tplStatus" style="display:none;">
+    <div class="card">
+      <div class="card-hd">Template Carregado</div>
+      <div style="display:flex;align-items:flex-start;gap:1.5rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem;font-family:'DM Mono',monospace;">ARQUIVO</div>
+          <div style="font-weight:600;font-size:.9rem;" id="tplNomeArq">—</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.25rem;" id="tplTipoArq">—</div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem;font-family:'DM Mono',monospace;">ELEMENTOS DETECTADOS</div>
+          <div id="tplElementos" style="font-size:.8rem;line-height:1.8;"></div>
+        </div>
+      </div>
+      <div id="tplImgPreview" style="display:none;margin-top:1rem;">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem;font-family:'DM Mono',monospace;">PRÉ-VISUALIZAÇÃO DA LOGO</div>
+        <img id="tplLogoImg" style="max-height:80px;max-width:300px;border:1px solid var(--border);border-radius:3px;padding:.3rem;background:#fff;" src="" alt="Logo">
+      </div>
+      <div class="btn-group" style="margin-top:1rem;">
+        <button class="btn btn-outline btn-sm" onclick="removerTemplate()">🗑 Remover Template</button>
+      </div>
+    </div>
+    <div class="info-box" style="border-color:#b8e0c0;background:#edf7f0;">
+      ✅ Template ativo. Todos os documentos gerados incluirão a logo e o rodapé do escritório.
+    </div>
+  </div>
+
+  <div id="tplVazio" style="display:none;">
+    <div class="info-box" style="border-color:var(--border);background:var(--cream);">
+      ℹ️ Nenhum template carregado. Os documentos serão gerados sem logo ou rodapé personalizado.
+    </div>
+  </div>
+</div>
+
+<!-- ══ DADOS ═════════════════════════════════════ -->
+<div class="view" id="v-dados">
+  <div class="page-hd">
+    <div class="page-title">Importar Dados</div>
+    <div class="page-sub">Envie a planilha com os dados dos executados (.xlsx ou .csv).</div>
+  </div>
+
+  <div class="info-box">
+    <strong>Colunas obrigatórias:</strong>
+    <code>comarca</code> <code>cliente</code> <code>executado</code> <code>cpf</code> <code>endereco</code> <code>valor</code><br>
+    <strong>Colunas opcionais para Atualização de Valores:</strong>
+    <code>vencimento</code> <code>multa</code> <code>honorarios</code> <code>data da atualizacao</code><br>
+    Nomes de coluna não diferenciam maiúsculas/minúsculas. Valor aceita <code>15000</code>, <code>15.000,50</code> ou <code>R$ 15.000,50</code>.
+    <br><span class="link-gold" onclick="downloadExemplo()">⬇ Baixar planilha de exemplo</span>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">Arquivo de Dados</div>
+    <div class="upload-zone" id="csvZone"
+         ondragover="dragOver(event,'csvZone')" ondragleave="dragLeave('csvZone')" ondrop="dropCSV(event)"
+         onclick="document.getElementById('csvFile').click()">
+      <div class="upload-icon">📂</div>
+      <div class="upload-text"><strong>Clique</strong> ou arraste a planilha aqui<br><small>.xlsx · .xls · .csv</small></div>
+    </div>
+    <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" onchange="loadCSV(this)">
+  </div>
+
+  <div id="dadosResult" style="display:none;">
+    <div class="stats-bar" id="dadosStats"></div>
+    <div class="card" style="padding:0;"><div class="table-wrap" id="dadosTabela"></div></div>
+    <div class="btn-group" style="margin-top:.8rem;">
+      <button class="btn btn-ghost btn-sm" onclick="limparDados()">🗑 Remover Dados</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GERAR ═════════════════════════════════════ -->
+<div class="view" id="v-gerar">
+  <div class="page-hd">
+    <div class="page-title">Gerar Petições</div>
+    <div class="page-sub">Escolha o modelo, filtre por cliente e selecione o formato de saída: Word ou PDF.</div>
+  </div>
+
+  <div style="margin-bottom:1rem;">
+    <div class="info-box" style="border-color:#b8e0c0;background:#edf7f0;margin-bottom:0;">
+      ✅ <strong>Template Dentrix ativo</strong> — logo e rodapé do escritório incluídos automaticamente em todos os documentos Word gerados.
+    </div>
+  </div>
+  <div id="atAviso" style="display:none;margin-bottom:1rem;">
+    <div class="info-box" style="border-color:#a8d5a2;background:#f0faf3;padding:1rem 1.2rem;">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem;">
+        <span style="font-size:1.1rem;">✅</span>
+        <strong style="color:#1b5e20;font-size:.9rem;">Atualização de valores calculada</strong>
+      </div>
+      <p style="font-size:.8rem;color:#2e7d32;margin:0 0 .8rem 0;">
+        Qual valor usar nas petições?
+      </p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <label id="lblValOriginal" style="display:flex;align-items:center;gap:.4rem;cursor:pointer;padding:.5rem .9rem;border-radius:6px;border:2px solid #ccc;background:#fff;font-size:.8rem;transition:all .15s;">
+          <input type="radio" name="modoValor" id="rdValOriginal" value="original" onchange="onModoValorChange()" style="accent-color:var(--gold);">
+          <span><strong>{{VALOR}} original</strong><br><small style="color:var(--muted);">Valor da planilha, sem correção</small></span>
+        </label>
+        <label id="lblValAtualizado" style="display:flex;align-items:center;gap:.4rem;cursor:pointer;padding:.5rem .9rem;border-radius:6px;border:2px solid #2e7d32;background:#f0faf3;font-size:.8rem;transition:all .15s;">
+          <input type="radio" name="modoValor" id="rdValAtualizado" value="atualizado" checked onchange="onModoValorChange()" style="accent-color:#2e7d32;">
+          <span><strong>{{VALOR}} atualizado ✅ recomendado</strong><br><small style="color:#2e7d32;">Juros + multa + honorários já incluídos</small></span>
+        </label>
+      </div>
+      <p style="font-size:.73rem;color:var(--muted);margin:.7rem 0 0 0;">
+        Com "atualizado" selecionado, <code>{{VALOR}}</code> e <code>{{VALOR_EXTENSO}}</code> no modelo serão substituídos pelo <strong>valor final corrigido</strong> automaticamente — sem precisar alterar o modelo.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">Configuração</div>
+    <div class="form-row">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Modelo de Petição *</label>
+        <select id="selModelo" onchange="onModeloChange()">
+          <option value="">— Selecione um modelo —</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Filtrar por Cliente (opcional)</label>
+        <select id="selCliente" onchange="filtrarPreview()">
+          <option value="">— Todos os clientes —</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem;">
+      <label style="margin-bottom:.5rem;">Formato de Download</label>
+      <div class="format-toggle">
+        <div class="fmt-btn active" id="fmt-docx" onclick="setFormato('docx')">📝 Word (.docx)</div>
+        <div class="fmt-btn" id="fmt-pdf" onclick="setFormato('pdf')">📄 PDF</div>
+      </div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;" id="formatoHint">
+        Arquivos Word editáveis — compatível com Microsoft Word, LibreOffice e Google Docs.
+      </div>
+    </div>
+  </div>
+
+  <div id="gerarPrev" style="display:none;">
+    <div class="stats-bar" id="gerarStats"></div>
+    <div class="card" style="padding:0;"><div class="table-wrap" id="gerarTabela"></div></div>
+  </div>
+
+  <div class="btn-group" style="margin-bottom:.7rem;">
+    <button class="btn btn-gold" id="btnGerar" onclick="gerarPeticoes()">⚡ Gerar Petições</button>
+  </div>
+  <div id="downloadAllWrap" style="display:none;margin-top:.5rem;">
+    <button class="btn btn-dark" onclick="baixarTodas()">📦 Baixar Todas em ZIP</button>
+  </div>
+</div>
+
+<!-- ══ AJUDA ══════════════════════════════════════ -->
+<!-- ══ ATUALIZAÇÃO DE VALORES ══════════════════════ -->
+<div class="view" id="v-atualizacao">
+  <div class="page-hd">
+    <div class="page-title">Atualização de Valores</div>
+    <div class="page-sub">Correção monetária conforme TJSP — multa e honorários lidos diretamente da planilha por linha.</div>
+  </div>
+
+  <!-- Único parâmetro global: juros -->
+  <div class="card">
+    <div class="card-hd">⚙️ Parâmetro Global</div>
+    <div class="form-row" style="align-items:flex-end;flex-wrap:wrap;gap:.8rem;">
+      <div class="form-group" style="margin-bottom:0;min-width:200px;flex:0 0 auto;">
+        <label>Juros de Mora TJSP (% a.m.)</label>
+        <input type="number" id="atFatorMes" value="1.00" step="0.01" min="0" style="font-family:'DM Mono',monospace;">
+        <small style="color:var(--muted);font-size:.72rem;">Aplica-se a todos os registros</small>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;align-self:flex-end;">
+        <button class="btn btn-gold" onclick="calcularAtualizacao()">🧮 Calcular Atualização</button>
+      </div>
+    </div>
+
+    <div class="info-box" style="margin-top:1rem;border-color:#d4edda;background:#f0faf3;font-size:.8rem;line-height:1.7;">
+      <strong>📋 Colunas lidas da planilha — por linha:</strong><br>
+      <code>valor</code> → Valor principal do débito &nbsp;|&nbsp;
+      <code>vencimento</code> → Data de vencimento (ex: <code>15/04/2023</code>)<br>
+      <code>multa</code> → Percentual de multa (ex: coluna <code>MULTA</code> com <code>0,5</code> formatado como % = 50%)<br>
+      <code>honorarios</code> ou <code>honorários advocatícios</code> → Percentual de honorários — se vazio, <strong>não é cobrado</strong><br>
+      <code>data da atualizacao</code> ou <code>data da atualização</code> → Data-base de atualização por linha<br>
+      <br>
+      <strong>Fórmula:</strong>
+      <span style="font-family:'DM Mono',monospace;">
+        Juros = Principal × [(1 + 1%)^Meses − 1] &nbsp;|&nbsp;
+        Multa = Principal × Multa% &nbsp;|&nbsp;
+        Hon. = (Corrigido + Multa) × Hon.% &nbsp;|&nbsp;
+        <strong>Final = Corrigido + Multa + Hon.</strong>
+      </span>
+    </div>
+  </div>
+
+  <!-- Resultado -->
+  <div id="atResult" style="display:none;">
+    <div class="stats-bar" id="atStats"></div>
+    <div class="card" style="padding:0;">
+      <div class="table-wrap" id="atTabela"></div>
+    </div>
+    <div class="btn-group" style="margin-top:.8rem;">
+      <button class="btn btn-gold" onclick="exportarAtualizacao()">📥 Exportar Planilha (.xlsx)</button>
+      <button class="btn btn-outline btn-sm" onclick="gerarPDFsDebitos()">📄 Gerar PDFs de Débitos</button>
+      <button class="btn btn-outline btn-sm" onclick="copiarAtualizacao()">📋 Copiar Tabela</button>
+    </div>
+    <div id="atPdfLinks" style="display:none;margin-top:.7rem;"></div>
+  </div>
+
+  <!-- Sem dados -->
+  <div id="atSemDados" class="info-box" style="border-color:var(--border);background:var(--cream);margin-top:.5rem;">
+    ℹ️ Importe a planilha na aba <strong>Importar Dados</strong> para habilitar o cálculo.<br>
+    Colunas obrigatórias: <code>valor</code>, <code>vencimento</code>, <code>multa</code>, <code>data da atualizacao</code>.<br>
+    Coluna opcional: <code>honorarios</code> — se ausente ou vazia, honorários não são cobrados.
+  </div>
+</div>
+
+<div class="view" id="v-ajuda">
+  <div class="page-hd"><div class="page-title">Guia de Uso</div></div>
+  <div class="card">
+    <div class="card-hd">Passo 1 — Configurar o Template Visual (logo + rodapé)</div>
+    <p style="font-size:.83rem;line-height:1.75;color:var(--muted);">Acesse <strong>Template Visual</strong> e importe seu arquivo Word ou PDF que já contém a <strong>logo do escritório no cabeçalho</strong> e o <strong>rodapé com seus dados</strong> (nome, OAB, endereço). O sistema extrai automaticamente essas partes e as aplica em todos os documentos gerados. Você pode atualizar o template a qualquer momento.</p>
+  </div>
+  <div class="card">
+    <div class="card-hd">Passo 2 — Criar ou Importar um Modelo de Texto</div>
+    <p style="font-size:.83rem;line-height:1.75;color:var(--muted);">Acesse <strong>Editor de Modelo</strong>. Digite, cole ou importe um <strong>.docx ou .txt</strong> com o corpo da petição. Posicione as variáveis dinâmicas nos locais corretos clicando nos botões coloridos (ex: <code style="background:var(--cream);padding:.1rem .3rem;border-radius:2px;font-family:'DM Mono',monospace;">{{COMARCA}}</code>) e salve com um nome descritivo.</p>
+  </div>
+  <div class="card">
+    <div class="card-hd">Passo 3 — Importar a Planilha de Dados</div>
+    <p style="font-size:.83rem;line-height:1.75;color:var(--muted);">Em <strong>Importar Dados</strong>, envie sua planilha <strong>.xlsx</strong> ou <strong>.csv</strong> com as colunas: <code style="background:var(--cream);padding:.1rem .3rem;border-radius:2px;font-family:'DM Mono',monospace;">comarca, cliente, executado, cpf, endereco, valor</code>.</p>
+  </div>
+  <div class="card">
+    <div class="card-hd">Passo 4 — Gerar e Baixar</div>
+    <p style="font-size:.83rem;line-height:1.75;color:var(--muted);">Em <strong>Gerar Petições</strong>, selecione o modelo, filtre pelo cliente, escolha o formato <strong>Word (.docx) ou PDF</strong> e clique em Gerar. Os arquivos sairão com sua logo e rodapé incluídos, idênticos entre Word e PDF.</p>
+  </div>
+  <div class="card">
+    <div class="card-hd">Variáveis Disponíveis</div>
+    <div style="font-size:.8rem;line-height:2.1;font-family:'DM Mono',monospace;">
+      <div><span style="color:var(--gold);">{{COMARCA}}</span> — Comarca onde o processo será distribuído</div>
+      <div><span style="color:var(--gold);">{{CLIENTE}}</span> — Nome do seu cliente (exequente)</div>
+      <div><span style="color:var(--gold);">{{EXECUTADO}}</span> — Nome completo do executado</div>
+      <div><span style="color:var(--gold);">{{CPF}}</span> — CPF do executado</div>
+      <div><span style="color:var(--gold);">{{ENDERECO}}</span> — Endereço completo do executado</div>
+      <div><span style="color:var(--gold);">{{VALOR}}</span> — Valor original da planilha (ex: R$ 2.134,00)</div>
+      <div><span style="color:var(--gold);">{{VALOR_EXTENSO}}</span> — Valor original por extenso</div>
+      <div><span style="color:var(--gold);">{{DATA}}</span> — Data atual por extenso</div>
+      <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #d4edda;"></div>
+      <div style="font-size:.72rem;color:#2e7d32;font-weight:600;margin-bottom:.2rem;">▼ Variáveis de Atualização (requerem cálculo prévio na aba 🧮)</div>
+      <div><span style="color:#2e7d32;">{{VALOR_ATUALIZADO}}</span> — Valor final atualizado (corrigido + multa + honorários)</div>
+      <div><span style="color:#2e7d32;">{{VALOR_ATUALIZADO_EXTENSO}}</span> — Valor atualizado por extenso</div>
+      <div><span style="color:#2e7d32;">{{VALOR_JUROS}}</span> — Valor dos juros de mora (correção monetária)</div>
+      <div><span style="color:#2e7d32;">{{VALOR_MULTA}}</span> — Valor da multa calculada</div>
+      <div><span style="color:#2e7d32;">{{VALOR_HONORARIOS}}</span> — Valor dos honorários advocatícios</div>
+      <div><span style="color:#2e7d32;">{{DATA_VENCIMENTO}}</span> — Data de vencimento do débito (da planilha)</div>
+      <div><span style="color:#2e7d32;">{{DATA_ATUALIZACAO}}</span> — Data-base da atualização (da planilha)</div>
+      <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f0d080;"></div>
+      <div style="font-size:.72rem;color:#7a5c00;font-weight:600;margin-bottom:.2rem;">▼ Forçar valor original (ignora o toggle)</div>
+      <div><span style="color:#7a5c00;">{{VALOR_ORIGINAL}}</span> — Sempre o valor original da planilha (sem correção)</div>
+      <div><span style="color:#7a5c00;">{{VALOR_ORIGINAL_EXTENSO}}</span> — Valor original por extenso</div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL PREVIEW -->
+<div class="overlay" id="modalPrev" onclick="closeOv('modalPrev',event)">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title" id="prevTitle">Pré-visualização</div>
+      <button class="modal-x" onclick="closeModal('modalPrev')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="preview-text" id="prevContent"></div>
+    </div>
+    <div class="modal-ft">
+      <div style="font-size:.72rem;color:var(--muted);" id="prevFormatoInfo"></div>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-sm" onclick="closeModal('modalPrev')">Fechar</button>
+        <button class="btn btn-gold btn-sm" id="prevDlBtn" onclick="dlModalFile()">⬇ Baixar Word</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DELETE -->
+<div class="overlay" id="modalDel" onclick="closeOv('modalDel',event)">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-hd">
+      <div class="modal-title">Excluir Modelo</div>
+      <button class="modal-x" onclick="closeModal('modalDel')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.85rem;line-height:1.6;">Excluir o modelo <strong id="delNome"></strong>? Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-ft" style="justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="closeModal('modalDel')">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarDel()">🗑 Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let modelos = {};
+let registros = [];
+let peticoesGeradas = [];
+let editandoId = null;
+let delTargetId = null;
+let prevText = '';
+let prevFilename = '';
+let prevVarsMap = {};
+let formatoAtual = 'docx'; // 'docx' ou 'pdf'
+
+// Template visual (logo + rodapé do escritório)
+let templateData = null;
+// templateData = {
+//   nomeArq, tipo ('docx'|'pdf'),
+//   headerXml, footerXml, headerRels, footerRels,
+//   mediaFiles: { 'media/imageX.png': Uint8Array, ... },
+//   contentTypesExtras: [...],
+//   logoBase64: 'data:image/png;base64,...',   // para preview e PDF
+//   logoMime: 'image/png',
+//   rodapeTexto: '...',  // texto puro do rodapé (para PDF)
+//   sectPrXml: '...',    // <w:sectPr> original com refs de header/footer
+// }
+
+// ════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  try { const m = localStorage.getItem('lexauto_v3_modelos'); if(m) modelos = JSON.parse(m); } catch(e){}
+  try { const r = localStorage.getItem('lexauto_v3_regs'); if(r) registros = JSON.parse(r); } catch(e){}
+  try { const t = localStorage.getItem('lexauto_v3_tpl'); if(t) templateData = JSON.parse(t); } catch(e){}
+  renderModelosGrid();
+  renderDadosResult();
+  renderTemplateStatus();
+});
+
+// ════════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════════
+function goTo(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  document.getElementById('nav-' + id)?.classList.add('active');
+  if(id === 'v-modelos') renderModelosGrid();
+  if(id === 'v-template') renderTemplateStatus();
+  if(id === 'v-gerar') {
+    popSelModelo(); popSelCliente(); filtrarPreview();
+    const av=document.getElementById('atAviso');
+    const hasAt=(atDados&&atDados.length)>0;
+    if(av) av.style.display=hasAt?'block':'none';
+    if(hasAt){
+      const rd=document.getElementById('rdValAtualizado');
+      if(rd&&!rd.checked){ rd.checked=true; onModoValorChange(); }
+    }
+  }
+  if(id === 'v-atualizacao') renderAtStatus();
+}
+
+// ════════════════════════════════════════════════════
+// FORMATO
+// ════════════════════════════════════════════════════
+function setFormato(f) {
+  formatoAtual = f;
+  document.getElementById('fmt-docx').classList.toggle('active', f === 'docx');
+  document.getElementById('fmt-pdf').classList.toggle('active', f === 'pdf');
+  document.getElementById('formatoHint').textContent = f === 'docx'
+    ? 'Arquivos Word editáveis — compatível com Microsoft Word, LibreOffice e Google Docs.'
+    : 'Arquivos PDF prontos para impressão e distribuição eletrônica.';
+  // re-renderiza tabela se já gerou
+  if(peticoesGeradas.length) renderGerarTabela();
+}
+
+// ════════════════════════════════════════════════════
+// MODELOS GRID
+// ════════════════════════════════════════════════════
+function saveModelos() { localStorage.setItem('lexauto_v3_modelos', JSON.stringify(modelos)); }
+
+function renderModelosGrid() {
+  const g = document.getElementById('modelosGrid');
+  const ids = Object.keys(modelos);
+  if(!ids.length) {
+    g.innerHTML = `<div class="modelo-empty"><div style="font-size:1.8rem;margin-bottom:.6rem;">📂</div><div style="font-weight:600;margin-bottom:.35rem;">Nenhum modelo salvo</div><div style="font-size:.8rem;">Crie seu primeiro modelo clicando em "+ Novo Modelo".</div></div>`;
+    return;
+  }
+  g.innerHTML = `<div class="modelos-grid">${ids.map(id => {
+    const m = modelos[id];
+    const prev = m.texto.replace(/\n/g,' ').substring(0,90) + '…';
+    return `<div class="mc">
+      <div class="mc-name">${esc(m.nome)}</div>
+      ${m.tipo ? `<span class="badge badge-gold">${esc(m.tipo)}</span>` : ''}
+      <div class="mc-desc">${esc(prev)}</div>
+      <div class="mc-meta">${m.editadoEm ? 'Editado ' + m.editadoEm : 'Criado ' + m.criadoEm}</div>
+      <div class="mc-actions">
+        <button class="btn btn-outline btn-xs" onclick="editarModelo('${id}')">✏️ Editar</button>
+        <button class="btn btn-gold btn-xs" onclick="prevModelo('${id}')">👁 Ver</button>
+        <button class="btn btn-ghost btn-xs" style="margin-left:auto;" onclick="pedirDel('${id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function novoModelo() {
+  editandoId = null;
+  document.getElementById('edNome').value = '';
+  document.getElementById('edTipo').value = '';
+  document.getElementById('edTexto').value = '';
+  document.getElementById('edTitle').textContent = 'Novo Modelo';
+  goTo('v-editor');
+}
+
+function editarModelo(id) {
+  const m = modelos[id];
+  editandoId = id;
+  document.getElementById('edNome').value = m.nome;
+  document.getElementById('edTipo').value = m.tipo || '';
+  document.getElementById('edTexto').value = m.texto;
+  document.getElementById('edTitle').textContent = 'Editar: ' + m.nome;
+  goTo('v-editor');
+}
+
+function prevModelo(id) {
+  const m = modelos[id];
+  prevText = m.texto;
+  prevFilename = sanitize(m.nome);
+  document.getElementById('prevTitle').textContent = m.nome;
+  document.getElementById('prevContent').textContent = m.texto;
+  document.getElementById('prevFormatoInfo').textContent = 'Pré-visualização do modelo sem substituições.';
+  document.getElementById('prevDlBtn').textContent = '⬇ Baixar como ' + (formatoAtual === 'docx' ? 'Word' : 'PDF');
+  document.getElementById('modalPrev').classList.add('open');
+}
+
+function salvarModelo() {
+  const nome = document.getElementById('edNome').value.trim();
+  const tipo = document.getElementById('edTipo').value.trim();
+  const texto = document.getElementById('edTexto').value.trim();
+  if(!nome) { toast('Informe o nome do modelo.','err'); return; }
+  if(!texto) { toast('O texto está vazio.','err'); return; }
+  const agora = new Date().toLocaleDateString('pt-BR');
+  if(editandoId) {
+    modelos[editandoId] = { ...modelos[editandoId], nome, tipo, texto, editadoEm: agora };
+    toast('✅ Modelo atualizado!','ok');
+  } else {
+    const id = 'm_' + Date.now();
+    modelos[id] = { id, nome, tipo, texto, criadoEm: agora };
+    editandoId = id;
+    toast('✅ Modelo salvo!','ok');
+  }
+  saveModelos();
+  goTo('v-modelos');
+}
+
+function pedirDel(id) {
+  delTargetId = id;
+  document.getElementById('delNome').textContent = modelos[id]?.nome;
+  document.getElementById('modalDel').classList.add('open');
+}
+function confirmarDel() {
+  delete modelos[delTargetId];
+  saveModelos();
+  closeModal('modalDel');
+  renderModelosGrid();
+  toast('Modelo excluído.');
+}
+
+// ════════════════════════════════════════════════════
+// EDITOR
+// ════════════════════════════════════════════════════
+function iv(v) {
+  const ta = document.getElementById('edTexto');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.substring(0,s) + v + ta.value.substring(e);
+  ta.selectionStart = ta.selectionEnd = s + v.length;
+  ta.focus();
+}
+function itab(group, name) {
+  document.querySelectorAll('.itab').forEach((t,i) => t.classList.toggle('active', ['digitar','importar'][i] === name));
+  document.querySelectorAll('.ipanel').forEach((p,i) => p.classList.toggle('active', ['imp-digitar','imp-importar'][i] === 'imp-'+name));
+}
+function carregarExemplo() {
+  if(document.getElementById('edTexto').value.trim() && !confirm('Substituir o conteúdo atual pelo exemplo?')) return;
+  document.getElementById('edTexto').value = `EXCELENTÍSSIMO(A) SENHOR(A) DOUTOR(A) JUIZ(A) DE DIREITO
+DA VARA CÍVEL DA COMARCA DE {{COMARCA}}
+
+PETIÇÃO INICIAL DE EXECUÇÃO DE TÍTULO EXTRAJUDICIAL
+
+
+{{CLIENTE}}, já qualificado nos autos, por intermédio de seu advogado infra-assinado, vem, respeitosamente, à presença de Vossa Excelência, com fundamento nos artigos 824 e seguintes do Código de Processo Civil, propor a presente
+
+AÇÃO DE EXECUÇÃO DE TÍTULO EXTRAJUDICIAL
+
+em face de:
+
+EXECUTADO: {{EXECUTADO}}
+CPF: {{CPF}}
+ENDEREÇO: {{ENDERECO}}
+
+pelos fatos e fundamentos a seguir expostos:
+
+I – DOS FATOS
+
+O exequente é credor do executado na quantia de {{VALOR}} ({{VALOR_EXTENSO}}), devidamente representada por título executivo extrajudicial, líquido, certo e exigível, conforme documentos que instruem a presente petição.
+
+O executado, intimado para pagamento, quedou-se inerte, deixando transcorrer o prazo sem efetuar o adimplemento da obrigação.
+
+II – DO DIREITO
+
+Nos termos do artigo 783 do Código de Processo Civil, a execução para cobrança de crédito fundada em título executivo extrajudicial far-se-á quando o crédito for líquido, certo e exigível.
+
+III – DO PEDIDO
+
+Diante do exposto, requer-se:
+
+a) A citação do executado {{EXECUTADO}}, no endereço {{ENDERECO}}, para, no prazo de 3 (três) dias, efetuar o pagamento do débito no valor de {{VALOR}} ({{VALOR_EXTENSO}}), acrescido dos encargos legais;
+
+b) Na ausência de pagamento, seja determinada a penhora de bens suficientes à satisfação do crédito;
+
+c) A condenação do executado ao pagamento das custas processuais e honorários advocatícios.
+
+Dá-se à causa o valor de {{VALOR}}.
+
+Termos em que, pede deferimento.
+
+{{COMARCA}}, {{DATA}}.
+
+_________________________________
+Advogado(a) – OAB nº ____________`;
+  toast('Exemplo carregado.');
+}
+
+// ════════════════════════════════════════════════════
+// IMPORTAR DOC
+// ════════════════════════════════════════════════════
+function dragOver(e,id){e.preventDefault();document.getElementById(id).classList.add('drag');}
+function dragLeave(id){document.getElementById(id)?.classList.remove('drag');}
+function dropDoc(e){e.preventDefault();dragLeave('docZone');const f=e.dataTransfer.files[0];if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('docFile').files=dt.files;importDoc(document.getElementById('docFile'));}}
+function dropCSV(e){e.preventDefault();dragLeave('csvZone');const f=e.dataTransfer.files[0];if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('csvFile').files=dt.files;loadCSV(document.getElementById('csvFile'));}}
+
+function importDoc(inp) {
+  const file = inp.files[0]; if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'txt') {
+    const r = new FileReader(); r.readAsText(file,'UTF-8');
+    r.onload = e => mostrarImportPrev(e.target.result);
+  } else if(ext === 'docx') {
+    const r = new FileReader(); r.readAsArrayBuffer(file);
+    r.onload = async e => {
+      try {
+        const zip = await JSZip.loadAsync(e.target.result);
+        const xmlFile = zip.file('word/document.xml');
+        if(!xmlFile){toast('DOCX inválido.','err');return;}
+        const xml = await xmlFile.async('string');
+        mostrarImportPrev(extrairTextoDocx(xml));
+      } catch(err){toast('Erro ao ler .docx','err');}
+    };
+  } else { toast('Formato não suportado.','err'); }
+  inp.value = '';
+}
+function extrairTextoDocx(xml) {
+  return xml.replace(/<w:br[^>]*\/>/g,'\n').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+    .replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+}
+function mostrarImportPrev(txt) {
+  document.getElementById('importPrevText').value = txt;
+  document.getElementById('importPrev').style.display = 'block';
+  toast('✅ Texto extraído. Revise e use.');
+}
+function usarImportado() {
+  document.getElementById('edTexto').value = document.getElementById('importPrevText').value;
+  itab('imp','digitar');
+  document.getElementById('importPrev').style.display = 'none';
+  toast('Texto transferido para o editor.');
+}
+
+// ════════════════════════════════════════════════════
+// DADOS
+// ════════════════════════════════════════════════════
+function loadCSV(inp){if(inp.files[0]) processFile(inp.files[0]);}
+function processFile(f){
+  const ext = f.name.split('.').pop().toLowerCase();
+  const r = new FileReader();
+  if(ext==='csv'){r.readAsText(f,'UTF-8');r.onload=e=>parseCSV(e.target.result);}
+  else{r.readAsArrayBuffer(f);r.onload=e=>parseXLSX(e.target.result);}
+}
+const NORM = k => k.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+const COLS = ['comarca','cliente','executado','cpf','endereco','valor'];
+// COLS_OPT: valores após NORM() — NORM remove acentos e não-alfanuméricos
+// 'HONORÁRIOS ADVOCATÍCIOS' → 'honorariosadvocaticios'
+// 'DATA DA ATUALIZAÇÃO' → 'datadaatualizacao'
+const COLS_OPT = ['vencimento','multa','honorarios','honorariosadvocaticios','dataatualizacao','datadaatualizacao']; // colunas opcionais
+function parseRows(headers, rows){
+  const hN = headers.map(NORM);
+  const miss = COLS.filter(c=>!hN.includes(c));
+  if(miss.length){toast('Colunas ausentes: '+miss.join(', '),'err');return;}
+  const valIdx = hN.indexOf('valor');
+  registros = rows.map((row,i)=>{
+    const o = {_l: i+2};
+    COLS.forEach((c, ci) => {
+      const idx = hN.indexOf(c);
+      const cell = row[idx] ?? '';
+      // Preservar número na coluna valor; demais colunas como string
+      if(c === 'valor' && typeof cell === 'number'){
+        o[c] = cell; // número bruto do Excel
+      } else {
+        o[c] = String(cell).trim();
+      }
+    });
+    // Colunas opcionais — mapear para chave canônica
+    const COLS_OPT_MAP = {
+      'vencimento'              : 'vencimento',
+      'multa'                   : 'multa',
+      'honorarios'              : 'honorarios',
+      'honorariosadvocaticios'  : 'honorarios',      // HONORÁRIOS ADVOCATÍCIOS
+      'dataatualizacao'         : 'data da atualizacao',
+      'datadaatualizacao'       : 'data da atualizacao', // DATA DA ATUALIZAÇÃO
+    };
+    COLS_OPT.forEach(normKey => {
+      const idx = hN.indexOf(normKey);
+      if(idx >= 0){
+        const canonKey = COLS_OPT_MAP[normKey] || normKey;
+        const cell = row[idx] ?? '';
+        o[canonKey] = typeof cell === 'number' ? cell : String(cell).trim();
+      }
+    });
+    return o;
+  }).filter(r => r.executado);
+  localStorage.setItem('lexauto_v3_regs', JSON.stringify(registros));
+  renderDadosResult();
+  toast(`✅ ${registros.length} registros carregados!`, 'ok');
+}
+function parseCSV(txt){const lines=txt.split(/\r?\n/).filter(l=>l.trim());const d=lines[0].includes(';')?';':',';const p=l=>l.split(d).map(c=>c.replace(/^"|"$/g,'').trim());parseRows(p(lines[0]),lines.slice(1).map(p));}
+
+function parseXLSX(buf){
+  const wb = XLSX.read(buf, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  // Usar sheet_to_json com raw:true para obter valores numéricos originais das células
+  const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+  if(data.length < 2){toast('Planilha vazia.','err');return;}
+  const headers = data[0].map(String);
+  // Converter linhas: manter número como número para a coluna valor, resto como string
+  const hN = headers.map(NORM);
+  const valIdx = hN.indexOf('valor');
+  const rows = data.slice(1).map(row => row.map((cell, ci) => {
+    // Coluna valor: se for número, manter como número (evita perda de precisão)
+    if(ci === valIdx && typeof cell === 'number') return cell;
+    return String(cell ?? '').trim();
+  }));
+  parseRows(headers, rows);
+}
+
+function renderDadosResult(){
+  const sec=document.getElementById('dadosResult');
+  if(!registros.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  const total=registros.reduce((a,r)=>a+parseVal(r.valor),0);
+  document.getElementById('dadosStats').innerHTML=`
+    <div class="stat"><div class="stat-val">${registros.length}</div><div class="stat-label">Registros</div></div>
+    <div class="stat"><div class="stat-val">${new Set(registros.map(r=>r.cliente)).size}</div><div class="stat-label">Clientes</div></div>
+    <div class="stat"><div class="stat-val">${new Set(registros.map(r=>r.comarca)).size}</div><div class="stat-label">Comarcas</div></div>
+    <div class="stat"><div class="stat-val">${fmtV(total)}</div><div class="stat-label">Total</div></div>`;
+  document.getElementById('dadosTabela').innerHTML=`<table>
+    <thead><tr><th>#</th><th>Comarca</th><th>Cliente</th><th>Executado</th><th>CPF</th><th>Valor</th></tr></thead>
+    <tbody>${registros.map(r=>`<tr><td>${r._l}</td><td>${esc(r.comarca)}</td><td>${esc(r.cliente)}</td><td><strong>${esc(r.executado)}</strong></td><td>${esc(r.cpf)}</td><td>${fmtV(parseVal(r.valor))}</td></tr>`).join('')}</tbody>
+  </table>`;
+}
+function limparDados(){
+  if(!confirm('Remover todos os dados importados?'))return;
+  registros=[];localStorage.removeItem('lexauto_v3_regs');
+  renderDadosResult();toast('Dados removidos.');
+}
+
+// ════════════════════════════════════════════════════
+// GERAR
+// ════════════════════════════════════════════════════
+function popSelModelo(){
+  const sel=document.getElementById('selModelo'),cur=sel.value;
+  sel.innerHTML='<option value="">— Selecione um modelo —</option>';
+  Object.values(modelos).forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.nome+(m.tipo?` [${m.tipo}]`:'');sel.appendChild(o);});
+  if(cur)sel.value=cur;
+  // Template badge
+  const badge=document.getElementById('gerarTplBadge');
+  if(badge){
+    if(templateData){ badge.style.display='block'; document.getElementById('gerarTplNome').textContent=templateData.nomeArq; }
+    else badge.style.display='none';
+  }
+}
+function popSelCliente(){
+  const sel=document.getElementById('selCliente'),cur=sel.value;
+  sel.innerHTML='<option value="">— Todos os clientes —</option>';
+  [...new Set(registros.map(r=>r.cliente).filter(Boolean))].sort().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  if(cur)sel.value=cur;
+}
+function onModeloChange(){filtrarPreview();}
+
+function getRegistrosFiltrados(){
+  const c=document.getElementById('selCliente').value;
+  return c ? registros.filter(r=>r.cliente===c) : registros;
+}
+
+function filtrarPreview(){
+  const mid=document.getElementById('selModelo').value;
+  const sec=document.getElementById('gerarPrev');
+  const regs=getRegistrosFiltrados();
+  if(!mid||!regs.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  const total=regs.reduce((a,r)=>a+parseVal(r.valor),0);
+  document.getElementById('gerarStats').innerHTML=`
+    <div class="stat"><div class="stat-val">${regs.length}</div><div class="stat-label">Petições</div></div>
+    <div class="stat"><div class="stat-val">${new Set(regs.map(r=>r.comarca)).size}</div><div class="stat-label">Comarcas</div></div>
+    <div class="stat"><div class="stat-val">${fmtV(total)}</div><div class="stat-label">Total</div></div>`;
+  document.getElementById('gerarTabela').innerHTML=`<table>
+    <thead><tr><th>#</th><th>Cliente</th><th>Executado</th><th>Comarca</th><th>Valor</th><th>Ações</th></tr></thead>
+    <tbody>${regs.map((r,i)=>`<tr>
+      <td>${i+1}</td><td>${esc(r.cliente)}</td><td><strong>${esc(r.executado)}</strong></td>
+      <td>${esc(r.comarca)}</td><td>${fmtV(parseVal(r.valor))}</td>
+      <td><button class="btn btn-outline btn-xs" onclick="prevPeticao(${registros.indexOf(r)})">👁 Ver</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+  peticoesGeradas = []; // reset quando muda filtro
+  document.getElementById('downloadAllWrap').style.display='none';
+}
+
+async function gerarPeticoes(){
+  const mid=document.getElementById('selModelo').value;
+  if(!mid||!modelos[mid]){toast('Selecione um modelo.','err');return;}
+  if(!registros.length){toast('Importe os dados primeiro.','err');goTo('v-dados');return;}
+  const regs=getRegistrosFiltrados();
+  if(!regs.length){toast('Nenhum registro para este filtro.','err');return;}
+
+  const btn=document.getElementById('btnGerar');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span> Gerando…';
+
+  const modelo=modelos[mid];
+  // Indexar atDados por executado para enriquecer com valores atualizados
+  const atIdx={};
+  (atDados||[]).forEach(d=>{ atIdx[d.executado.trim().toUpperCase()]=d; });
+
+  peticoesGeradas=regs.map((r,i)=>{
+    const v=parseVal(r.valor);
+    const dataAtual=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+    // Buscar dados da atualização para este executado (se existirem)
+    const at=atIdx[r.executado.trim().toUpperCase()];
+    const vAt    = at ? at.total     : v;      // valor final atualizado ou original
+    const vJuros = at ? at.vJuros    : 0;
+    const vMulta = at ? at.vMulta    : 0;
+    const vHonor = at ? at.vHonor    : 0;
+    const vCorr  = at ? at.correcao  : v;
+    const dtVenc = at ? fmtData(at.dataVenc) : '';
+    const dtAt   = at ? fmtData(at.dataAt)   : '';
+    // Se toggle "atualizado" ativo E registro tem cálculo: {{VALOR}} usa valor corrigido
+    const usarAtualizado = at && document.getElementById('rdValAtualizado')?.checked;
+    const vExibir = usarAtualizado ? vAt : v;
+    const varsMap={
+      '{{COMARCA}}':r.comarca,
+      '{{CLIENTE}}':r.cliente,
+      '{{EXECUTADO}}':r.executado,
+      '{{CPF}}':r.cpf,
+      '{{ENDERECO}}':r.endereco,
+      '{{VALOR}}':fmtV(vExibir).replace(/R\$\s*/,''),
+      '{{VALOR_EXTENSO}}':valorExtenso(vExibir),
+      '{{VALOR_ORIGINAL}}':fmtV(v).replace(/R\$\s*/,''),
+      '{{VALOR_ORIGINAL_EXTENSO}}':valorExtenso(v),
+      '{{DATA}}':dataAtual,
+      // Variáveis de valor atualizado (verde no editor)
+      '{{VALOR_ATUALIZADO}}':fmtV(vAt).replace(/R\$\s*/,''),
+      '{{VALOR_ATUALIZADO_EXTENSO}}':valorExtenso(vAt),
+      '{{VALOR_JUROS}}':fmtV(vJuros).replace(/R\$\s*/,''),
+      '{{VALOR_MULTA}}':fmtV(vMulta).replace(/R\$\s*/,''),
+      '{{VALOR_HONORARIOS}}':fmtV(vHonor).replace(/R\$\s*/,''),
+      '{{DATA_VENCIMENTO}}':dtVenc,
+      '{{DATA_ATUALIZACAO}}':dtAt,
+    };
+    let texto=modelo.texto;
+    for(const [k,val] of Object.entries(varsMap)){
+      texto=texto.split(k).join(k.startsWith('{{VALOR') ? 'R$ '+val : val);
+    }
+    const safe=sanitize(r.executado);
+    const num=String(i+1).padStart(3,'0');
+    return {texto,r,safe,num,varsMap};
+  });
+
+  renderGerarTabela();
+  document.getElementById('gerarPrev').style.display='block';
+  document.getElementById('downloadAllWrap').style.display='block';
+
+  btn.disabled=false;
+  btn.innerHTML='⚡ Gerar Petições';
+  toast(`✅ ${peticoesGeradas.length} petições geradas!`,'ok');
+}
+
+function renderGerarTabela(){
+  const ext=formatoAtual==='docx'?'.docx':'.pdf';
+  document.getElementById('gerarTabela').innerHTML=`<table>
+    <thead><tr><th>#</th><th>Cliente</th><th>Executado</th><th>Comarca</th><th>Valor</th><th>Ações</th></tr></thead>
+    <tbody>${peticoesGeradas.map((p,i)=>`<tr>
+      <td>${i+1}</td><td>${esc(p.r.cliente)}</td><td><strong>${esc(p.r.executado)}</strong></td>
+      <td>${esc(p.r.comarca)}</td><td>${fmtV(parseVal(p.r.valor))}</td>
+      <td style="display:flex;gap:.35rem;">
+        <button class="btn btn-outline btn-xs" onclick="prevGerada(${i})">👁</button>
+        <button class="btn btn-gold btn-xs" onclick="dlGerada(${i})">${formatoAtual==='docx'?'📝':'📄'} ${ext}</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ════════════════════════════════════════════════════
+// PREVIEW
+// ════════════════════════════════════════════════════
+function prevPeticao(idx){
+  const mid=document.getElementById('selModelo').value;
+  if(!mid||!modelos[mid]){toast('Selecione um modelo antes.','err');return;}
+  const r=registros[idx],v=parseVal(r.valor);
+  const dataAtual2=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const atIdx2={};(atDados||[]).forEach(d=>{atIdx2[d.executado.trim().toUpperCase()]=d;});
+  const at2=atIdx2[r.executado.trim().toUpperCase()];
+  const vAt2=at2?at2.total:v;
+  const usarAt2 = at2 && document.getElementById('rdValAtualizado')?.checked;
+  const vEx2 = usarAt2 ? vAt2 : v;
+  const varsMap={
+    '{{COMARCA}}':r.comarca,'{{CLIENTE}}':r.cliente,'{{EXECUTADO}}':r.executado,
+    '{{CPF}}':r.cpf,'{{ENDERECO}}':r.endereco,
+    '{{VALOR}}':fmtV(vEx2).replace(/R\$\s*/,''),
+    '{{VALOR_EXTENSO}}':valorExtenso(vEx2),
+    '{{VALOR_ORIGINAL}}':fmtV(v).replace(/R\$\s*/,''),
+    '{{VALOR_ORIGINAL_EXTENSO}}':valorExtenso(v),
+    '{{DATA}}':dataAtual2,
+    '{{VALOR_ATUALIZADO}}':fmtV(vAt2).replace(/R\$\s*/,''),
+    '{{VALOR_ATUALIZADO_EXTENSO}}':valorExtenso(vAt2),
+    '{{VALOR_JUROS}}':fmtV(at2?at2.vJuros:0).replace(/R\$\s*/,''),
+    '{{VALOR_MULTA}}':fmtV(at2?at2.vMulta:0).replace(/R\$\s*/,''),
+    '{{VALOR_HONORARIOS}}':fmtV(at2?at2.vHonor:0).replace(/R\$\s*/,''),
+    '{{DATA_VENCIMENTO}}':at2?fmtData(at2.dataVenc):'',
+    '{{DATA_ATUALIZACAO}}':at2?fmtData(at2.dataAt):'',
+  };
+  let texto=modelos[mid].texto;
+  for(const [k,val] of Object.entries(varsMap)){
+    texto=texto.split(k).join(k.startsWith('{{VALOR') ? 'R$ '+val : val);
+  }
+  prevText=texto;prevFilename=sanitize(r.executado)+'_preview';prevVarsMap=varsMap;
+  abrirPrev(r.executado, texto);
+}
+function prevGerada(i){
+  const p=peticoesGeradas[i];
+  prevText=p.texto;prevFilename=`Peticao_${p.safe}_${p.num}`;prevVarsMap=p.varsMap||{};
+  abrirPrev(p.r.executado,p.texto);
+}
+function abrirPrev(titulo,texto){
+  document.getElementById('prevTitle').textContent=titulo;
+  document.getElementById('prevContent').textContent=texto;
+  document.getElementById('prevFormatoInfo').textContent='Formato: '+(formatoAtual==='docx'?'Word (.docx)':'PDF');
+  document.getElementById('prevDlBtn').textContent='⬇ Baixar '+(formatoAtual==='docx'?'Word':'PDF');
+  document.getElementById('modalPrev').classList.add('open');
+}
+async function dlModalFile(){
+  if(formatoAtual==='docx') await dlDocx(prevText,prevFilename+'.docx',prevVarsMap);
+  else dlPDF(prevText,prevFilename+'.pdf');
+}
+
+// ════════════════════════════════════════════════════
+// DOWNLOAD INDIVIDUAL
+// ════════════════════════════════════════════════════
+async function dlGerada(i){
+  const p=peticoesGeradas[i];
+  const fn=`Peticao_${p.safe}_${p.num}`;
+  if(formatoAtual==='docx') await dlDocx(p.texto, fn+'.docx', p.varsMap);
+  else dlPDF(p.texto, fn+'.pdf');
+}
+
+// ════════════════════════════════════════════════════
+// DOWNLOAD TODAS EM ZIP
+// ════════════════════════════════════════════════════
+async function baixarTodas(){
+  if(!peticoesGeradas.length){toast('Gere as petições primeiro.','err');return;}
+  toast('Preparando ZIP…');
+  const zip=new JSZip();
+  const ext=formatoAtual==='docx'?'docx':'pdf';
+
+  for(let i=0;i<peticoesGeradas.length;i++){
+    const p=peticoesGeradas[i];
+    const fn=`Peticao_${p.safe}_${p.num}.${ext}`;
+    if(formatoAtual==='docx'){
+      const blob=await gerarDocxBlob(p.texto, p.varsMap);
+      zip.file(fn,blob);
+    } else {
+      const bytes=gerarPDFBytes(p.texto,p.r.executado);
+      zip.file(fn,bytes);
+    }
+  }
+
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Peticoes_${formatoAtual.toUpperCase()}_${new Date().toISOString().slice(0,10)}.zip`;
+  a.click();URL.revokeObjectURL(a.href);
+  toast('📦 ZIP baixado!','ok');
+}
+
+// ════════════════════════════════════════════════════
+// TEMPLATE VISUAL — importação, armazenamento, UI
+// ════════════════════════════════════════════════════
+function dropTemplate(e){
+  e.preventDefault(); dragLeave('tplZone');
+  const f = e.dataTransfer.files[0];
+  if(f){ const dt=new DataTransfer(); dt.items.add(f);
+    document.getElementById('tplFile').files=dt.files;
+    importTemplate(document.getElementById('tplFile'));
+  }
+}
+
+async function importTemplate(inp){
+  const file = inp.files[0]; if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  toast('Lendo template…');
+  try {
+    if(ext === 'docx'){
+      await importTemplateDocx(file);
+    } else if(ext === 'pdf'){
+      await importTemplatePdf(file);
+    } else {
+      toast('Use .docx ou .pdf','err'); return;
+    }
+    salvarTemplate();
+    renderTemplateStatus();
+    toast('✅ Template importado!','ok');
+  } catch(err){
+    toast('Erro ao ler template: '+err.message,'err');
+    console.error(err);
+  }
+  inp.value='';
+}
+
+async function importTemplateDocx(file){
+  const buf = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+
+  // Ler todos os arquivos do pacote
+  const allFiles = {};
+  for(const [path, zipObj] of Object.entries(zip.files)){
+    if(!zipObj.dir) allFiles[path] = await zipObj.async('uint8array');
+  }
+
+  // --- document.xml: pegar apenas o <w:sectPr> original (contém refs header/footer)
+  const docXmlRaw = new TextDecoder().decode(allFiles['word/document.xml'] || new Uint8Array());
+  const sectPrMatch = docXmlRaw.match(/<w:sectPr[\s\S]*?<\/w:sectPr>/);
+  const sectPrXml = sectPrMatch ? sectPrMatch[0] : '';
+
+  // --- Rels do document para encontrar headerX.xml / footerX.xml
+  const docRelsRaw = new TextDecoder().decode(allFiles['word/_rels/document.xml.rels'] || new Uint8Array());
+  const headerFooterRels = {};
+  const relRegex = /<Relationship[^>]+Id="([^"]+)"[^>]+Type="([^"]+)"[^>]+Target="([^"]+)"/g;
+  let rm;
+  while((rm = relRegex.exec(docRelsRaw)) !== null){
+    const [,id,type,target] = rm;
+    if(type.includes('/header') || type.includes('/footer') || type.includes('/image')){
+      headerFooterRels[id] = {type, target};
+    }
+  }
+
+  // --- Coletar arquivos header*.xml, footer*.xml e suas rels
+  const headerFiles = {}, footerFiles = {}, headerFooterRelsFiles = {};
+  for(const [path, data] of Object.entries(allFiles)){
+    const name = path.replace('word/','');
+    if(/^header\d*\.xml$/.test(name)) headerFiles[path] = new TextDecoder().decode(data);
+    if(/^footer\d*\.xml$/.test(name)) footerFiles[path] = new TextDecoder().decode(data);
+    if(/^_rels\/(header|footer)\d*\.xml\.rels$/.test(name)) headerFooterRelsFiles[path] = new TextDecoder().decode(data);
+  }
+
+  // --- Coletar imagens (media)
+  const mediaFiles = {};
+  for(const [path, data] of Object.entries(allFiles)){
+    if(path.startsWith('word/media/')) mediaFiles[path] = Array.from(data);
+  }
+
+  // --- Detectar logo: primeira imagem no header1.xml (ou qualquer header)
+  let logoBase64 = null, logoMime = 'image/png';
+  const firstHeaderXml = Object.values(headerFiles)[0] || '';
+  const embedMatch = firstHeaderXml.match(/r:embed="([^"]+)"/);
+  if(embedMatch){
+    const embedId = embedMatch[1];
+    // Encontrar o rel desse embed no rels do header
+    const headerRelsFile = Object.values(headerFooterRelsFiles)[0] || '';
+    const imgRelMatch = new RegExp(`Id="${embedId}"[^>]+Target="([^"]+)"`).exec(headerRelsFile);
+    if(imgRelMatch){
+      const imgPath = 'word/' + imgRelMatch[1].replace('../','');
+      const imgData = mediaFiles[imgPath] || mediaFiles['word/media/'+imgRelMatch[1].split('/').pop()];
+      if(imgData){
+        const ext2 = imgPath.split('.').pop().toLowerCase();
+        logoMime = ext2 === 'jpg' || ext2 === 'jpeg' ? 'image/jpeg' : ext2 === 'gif' ? 'image/gif' : 'image/png';
+        logoBase64 = 'data:'+logoMime+';base64,' + btoa(String.fromCharCode(...imgData));
+      }
+    }
+  }
+
+  // --- Texto puro do rodapé para PDF
+  // Remover campos de instrução do Word (PAGE, NUMPAGES, etc.) que geram lixo no PDF
+  let rodapeTexto = '';
+  const firstFooterXml = Object.values(footerFiles)[0] || '';
+  // Remover blocos de campo Word inteiros: <w:fldChar>...</w:fldChar> e <w:instrText>...</w:instrText>
+  let footerLimpo = firstFooterXml
+    .replace(/<w:fldChar[\s\S]*?<\/w:fldChar>/g, '')
+    .replace(/<w:instrText[\s\S]*?<\/w:instrText>/g, '')
+    .replace(/<w:fldChar[^>]*\/>/g, '');
+  // Extrair apenas w:t (texto real), ignorando campos
+  const wtMatches = footerLimpo.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+  rodapeTexto = wtMatches
+    .map(t => t.replace(/<[^>]+>/g,''))
+    .join(' ')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  // --- Content types extras (para reconstruir corretamente)
+  const ctXml = new TextDecoder().decode(allFiles['[Content_Types].xml'] || new Uint8Array());
+  const ctExtras = [];
+  const ctRe = /<Override[^>]+PartName="([^"]+)"[^>]+ContentType="([^"]+)"/g;
+  let ctM;
+  while((ctM = ctRe.exec(ctXml)) !== null){
+    if(ctM[1].includes('/header') || ctM[1].includes('/footer')) ctExtras.push({part:ctM[1],ct:ctM[2]});
+  }
+  // Image defaults
+  const ctDefRe = /<Default[^>]+Extension="([^"]+)"[^>]+ContentType="([^"]*image[^"]*)"[^>]*>/g;
+  let ctDefM;
+  const imgExts = new Set();
+  while((ctDefM = ctDefRe.exec(ctXml)) !== null) imgExts.add({ext:ctDefM[1],ct:ctDefM[2]});
+
+  templateData = {
+    nomeArq: file.name,
+    tipo: 'docx',
+    headerFiles,     // { 'word/header1.xml': xmlString, ... }
+    footerFiles,     // { 'word/footer1.xml': xmlString, ... }
+    headerFooterRelsFiles, // { 'word/_rels/header1.xml.rels': xmlString, ... }
+    headerFooterRels, // { rId1: {type,target}, ... } — rels do document.xml
+    docRelsRaw,       // string completa das rels (para reconstruir)
+    mediaFiles,       // { 'word/media/image1.png': [bytes], ... }
+    logoBase64,
+    logoMime,
+    rodapeTexto,
+    sectPrXml,
+    ctExtras,
+    imgExts: [...imgExts],
+  };
+}
+
+async function importTemplatePdf(file){
+  // Para PDF: extraímos apenas a primeira página como imagem de referência
+  // e guardamos o ArrayBuffer para inserção como background no jsPDF
+  const buf = await file.arrayBuffer();
+  const bytes = Array.from(new Uint8Array(buf));
+  templateData = {
+    nomeArq: file.name,
+    tipo: 'pdf',
+    pdfBytes: bytes,
+    logoBase64: null,
+    rodapeTexto: '(template PDF — rodapé preservado da primeira página)',
+  };
+}
+
+function salvarTemplate(){
+  try { localStorage.setItem('lexauto_v3_tpl', JSON.stringify(templateData)); }
+  catch(e){ toast('Template grande demais para cache; recarregue ao reabrir.',''); }
+}
+
+function removerTemplate(){
+  templateData = null;
+  localStorage.removeItem('lexauto_v3_tpl');
+  renderTemplateStatus();
+  toast('Template removido.');
+}
+
+function renderTemplateStatus(){
+  const st = document.getElementById('tplStatus');
+  const vz = document.getElementById('tplVazio');
+  if(!st) return;
+  if(!templateData){ st.style.display='none'; vz.style.display='block'; return; }
+  st.style.display='block'; vz.style.display='none';
+  document.getElementById('tplNomeArq').textContent = templateData.nomeArq;
+  document.getElementById('tplTipoArq').textContent = templateData.tipo === 'docx' ? 'Documento Word (.docx)' : 'PDF';
+
+  const hCount = Object.keys(templateData.headerFiles||{}).length;
+  const fCount = Object.keys(templateData.footerFiles||{}).length;
+  const mCount = Object.keys(templateData.mediaFiles||{}).length;
+  let elems = [];
+  if(templateData.logoBase64) elems.push('✅ Logo / imagem detectada');
+  else elems.push('⚠️ Nenhuma imagem no cabeçalho');
+  if(hCount) elems.push(`✅ ${hCount} cabeçalho(s) XML`);
+  if(fCount) elems.push(`✅ ${fCount} rodapé(s) XML`);
+  if(mCount) elems.push(`✅ ${mCount} arquivo(s) de mídia`);
+  if(templateData.rodapeTexto) elems.push('✅ Texto do rodapé extraído');
+  document.getElementById('tplElementos').innerHTML = elems.map(e=>`<div>${e}</div>`).join('');
+
+  const imgPrev = document.getElementById('tplImgPreview');
+  if(templateData.logoBase64){
+    document.getElementById('tplLogoImg').src = templateData.logoBase64;
+    imgPrev.style.display='block';
+  } else { imgPrev.style.display='none'; }
+}
+
+// ════════════════════════════════════════════════════
+// MOTOR DOCX — Template Dentrix embutido
+// Estratégia: carregar o .docx original com JSZip.loadAsync(),
+// substituir APENAS word/document.xml, preservar TUDO o mais intacto.
+// Garante footer, header, imagens e estilos 100% idênticos ao modelo.
+// ════════════════════════════════════════════════════
+
+function xmlEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// DOCX original completo como base64 (todos os arquivos originais intactos)
+const _MODELO_DOCX_B64 = 'UEsDBAoAAAAAAHqVf1wAAAAAAAAAAAAAAAAFAAAAd29yZC9QSwMECgAAAAAAepV/XAAAAAAAAAAAAAAAAAsAAAB3b3JkL19yZWxzL1BLAwQKAAAACAB6lX9cL8qivQQBAAChBAAAHAAAAHdvcmQvX3JlbHMvZG9jdW1lbnQueG1sLnJlbHOtlM1qwzAQhF9F6F7LTtM0lCi5lECuxX0ARV7/EOsHaVOat69K41QuQfSg446kmY9l0Gb3qUbyAc4PRnNaFSUloKVpBt1x+l7vH9Z0t928wSgw3PD9YD0JT7TntEe0L4x52YMSvjAWdDhpjVMCw+g6ZoU8iQ7YoixXzMUedO5JDg2n7tBUlNQXC//xNm07SHg18qxA450I5vEygg+OwnWAnP7MRfCh7H78Ime8PqsjuLDHX4KblIJ4zAnRGoPaYLyGm5SCWOaEAN38YZiUFMJT1i4AYth73IarkkJY5USQRn0fRQiTkkJ4zt0GcPMqgKtS+eu8+RprcRwhRrhKEwSb/TXbL1BLAwQKAAAACAB6lX9chLYnHgULAADeVAAAEQAAAHdvcmQvZG9jdW1lbnQueG1s7Vxbb9s4Fv4rhLFYtIBj2XGu3klnNbbbukhiw3aKwbwsGIm22UqkSlJO0iJP+7DAAvsftjsPRQfoU3df9nH1x/YcSrKdumhzq+tJjALVheKnQ/JcvnMo54cfT8OAjJnSXIq9QqVULhAmPOlzMdwrHPUfr+0UiDZU+DSQgu0Vzpgu/Pjoh5OaL704ZMKQ0Ku1hkIqehxA+0llg5xUNslJVNkoEAAXunYSeXuFkTFRzXG0N2Ih1aWQe0pqOTAlT4aOHAy4x5wTqXxnvVwp27NISY9pDZLUqRhTncOF82gyYgIaB1KF1MClGjohVS/jaA3QI2r4MQ+4OQPs8lYOI/cKsRK1DGJtIhB2qaUCZYe8h7rMe9MujWx27BsdxQKQQQo94tF0GNdFg8ZRDjL+0iDGYTBdgsrGzdagoegJHKaAlxHfTzuFQSr5lxEr5UusCEJMelxGhIvvzCUJKRfTF19ramYmt7J5NYD1TwGi4c0W54mScTRF4zdDa4mXEyy0+StgZYs8OzR9M2F6IxpNLNA7vRxYpneIt+F4I6oMO51iVK4MsunsOjvzQOvXAIIBrlfmoapXhtpyUKo5oEvq8idAINUc0iWV+lOkzwxu63pI6/NI29dDqs4j7VwPaU6dwJG8vAYUn9oYDav+lRG2nVD6LKhOnWFly2OXNI/c1nYyY3W86XgQh19Snhxna4LDZ+W5njAzANo3/uhKKOu5b3awLzV0RPVoFvFq7gzsNYc7C2GOkPgcS/8Mj5H9r6PwoCPqwcKQkxodGAY8AWjUSS3g6D2rW5OLbowUicZGFhzs9sKDhjEN9grHEmI63HMmkOl/2fljKYxGdO1xcO514AKxOiNPoBf3EN3Tn7vLqDau5vRzbSNX6HkoK9Zx+n9d26N+nQu5Xi5kd+r64j1nIqrBubbzASONFNNMjVnhUfPnenO/edhP/tHrtQ7a5IH7kPSah0/bXXvaaB/1s9NnR61f0ntN0mh1m61+mzRcUm8fuN26i3ffvMkuzs+hI2n2+i4coKGX/LVNOu7RfrtEUCSTCpbO6q0sWb48K8AV4ApwBfhtAU9qXPjQMuBKm337bGWjsrPcsSOXakADzQp5JPnM3VuJKxAL9lsQV5rn5xc8/n2agyLxpaJjKgwjPhMy5IL6lCzRfNw+n2h3+0/bjfZhv1VfonEuet0jSJElJS9ilXzwuUdh+YnPFeNGkkjxMfVlkTBt6DELGHBzSQQl3ZiSOo24SX6V5IArrO0Vifjff0lle6tI3DCiSjq9TpHUmzVSqe6Wy2vlarlIuNCe4oYSIUn9sPOMaHlMpO25vl7aXN8oVba3nXK5XFmr7oJwUkEXcHZh8t7nEmXTLCbUH8shCAZtA0XXKCb5Vk6fjblPsczFiCeFNtzEMCxoGbOQJP8kduQieWeH+VxqTUnz1GNB8pvwOAwB6DsZxCLFsEMNGLfibZV2qmVnB8bgOR6IDAkcH0qys75BUKhhjHJqMCNSTz762ARv6KQlCLjHxzyA8SiJQ6KZHIYtBcX8JBZ4KJhanmhw+5bvJn9Dmg90v/lzs340uYLUog/MH+72u+6zo0ar3nL3l2KJfs+Z4GI9Gtj5AG6h9S2RV799HX7zxuou5q33mrdkEUXaiNJ5PBNQgNd1Hp+fFwk8zX0bE0AtgNp4POA0DWQwi4eNZrdZb+ODEQukJqE0fAxH0KABBWA2GxJp6usVYaeR1Ebq2r0tEyyvx7l9a2uVPjEx4EPO3Rtmo90jj91+u/c70elVdvt1rkMi3GsAf8W82GBSh/tisZJx5u7wOZ68gzPpw0TIIPk45J7URSIHTEEPaIEnkSizVzG6UfSoNOCvgfVLS7PjABg9I0ZRkxJndMteAJQYHjAS3gn/QAzwpoEccmD/DGlx8lbBOd4Hjz3tfFEOEEPxIfB7xIK3hBw6QtZh2T+8A8h1H/IDS7frUgzyZkYayQfMBooYGV7FNIBRqAF9DSA8BBZukn8h5ydB8uFVbJ/zcLgEp4oPoS8LsGcIsti0mJrYDtqX94BbPHf3293zc5Kd/QUYcfOwd7+ZBmg6fhTASBRQwYMR6LRgp/Rb7RN8wbetQvlNQvm9ieWTva9VNL8rXqj91WBHYQ5pWseSCgtdaeDnY2iLQ0rG7DVEQ1vlNcqG0UjR19JWpCCR8rgUECp9jObJbxpcHIR/gS/RWFILo4AZGZeI67OQco3BVRMs0Elb+wKqUSLV3W1bB6tD7NZYWUyTqVBCoLfyehhTkVfY6G8gm7LRnPoc8VMS4Ns2D4kHSwXAYXFDk3dwkZYGdcY5FMLLY+AJaSs0ao5Dhq55eC8tzktvbu4uzD6yd63sI7WPPrOaBXxSAcU85qku0RAI3VsgdEWwBtCYF7EPik4DWxoA9aGhrSTHJvkAlJeCXoLC8gA62bKwxgL4UOIXrHINdU6i7mKlgPFUta1BcR3FAlkBmlzKlFNya0VhikhbvPYU1rKRI1utthIgt5UxSEZoAOogqFVerFT/imMBgYF4Tu0iKx6npm01fpEk5Duo94rw3Ijw3B/G02k2Wo32wgn5l9Tpe7//Prn/Bk93sGVenkUPD65Yodum8xt+36p4u1KVpVeVDvBHDORkTlcgkg8FQ42Z0xeI9ch1gariJu6EjWZkdbbKlhLUMda3ABuphoAXCZ8plryDiO5x4OIQ0S3fxg3qOR6d7i7vWibdASqNVMKipHwdWEe5Sh5Ylv4QRLYsZcBMTJFoRHQ45QsXyl13vXbV/cPdHl9ekXP7R+5+6xe7/Ufmb64qdo8gF/YwqYXkD7U+r9+mFhtKwUxagGZZihqwIWS08FzyHp0C2BIfz1gSJLOxtb+Q6TCzQqxz40czihwzoe0HJkyMJBoq7kPCBU2/WVEszJswd8CKMhxsp1dxdgGTik9hxkA17jIq62WmJN++jUXoRSDKpV+5ALqQkCtwYcCjLDwXWAW1pVL5Q0pGPEo+GriBgcPmj9NYMAkeOoYjhi9/GvU0e0HzjR27Y5PpK5EC14KgBdl98QFuxniMK7sxBFFP2C+GrPrPxD8K6ew4eW/DmSfFGCIol7YwBe/nqOt3/PvCXqv3E35FtESDXLQDBvcXSh9UyqfgqP74KpbmT0s0Hbe/5v1m66Ddax0+dZdomItd9XSV7drb39DO0tnNjWLGZ1dB6t4GqUbyFpMriBYejTXu/UNvqe5DZrIi75edrLvuHxQfjsxeYW2rsHIWXyvTDHg4Yam404JfFNk9mig+DiD7gqznP0xbAhtOGSzWQ07xAyE+Tn8RANchUODw7n8bXHePkr+TA/ew337uHrbIE7fXcbutJRrzoono9CthStruT06vM/Oh8BLNy+3rQnV9o1Td3liiMS567Y/B7CHtlBcrsCxgRiX/FtyT5AFbCykPHpIQSzFjCjdpzP48xJv4i/6L1RwRp/nMN/6i4CYR4psJs7MKV1/5/sBW8EHjIFAVF6MgqzX5CoVg+PsNNmAq/RxkQXa7Wpav/uw6/xMcRciBGm4fzpZ4bZZKmLvGUi7DWL93DnjX5jzlwfeWGN5t2n8Iec3nqH9uRJp5JgUYSAmW08X4iDs58B5zFgEWREwaB6ZAVA3/lpdq+dupNNGwhxKegNVUdsuWno7gfGunaj2ZVByGCLJIZRTlJu90QBViyyiztqkHrGyXK3gJBmdkOG0O2GCmdcSAc4OFb5dTh2nFnlwOYzP7a/ZoeBiHfRiHvfKl90RxP3MGHW68Ueoe0pnM58LJ/zCXM/3TpI/+D1BLAwQKAAAACAB6lX9c/+UBrBgDAABVEQAADwAAAHdvcmQvc3R5bGVzLnhtbOVXXU/bMBT9K1HeIU2aFlYRECt0IE0bYqA9u47TWDh2ZjuU7tfPTpy05IMWGpi0PbW+9+bknPtR356cPSXEekRcYEYD2z0c2BaikIWYLgL7/m52cGxbQgIaAsIoCuwVEvbZ6clyIuSKIGElcHK9oIyDOVHepetbS3dkWwqVikkCAzuWMp04joAxSoA4ZCmiyhkxngCpjnzhJIA/ZOkBZEkKJJ5jguXK8QaDcQnDd0FhUYQhumAwSxCV+fMOR0QhMipinIoSbbkL2pLxMOUMIiFUJhJS4CUA0wrG9RtACYacCRbJQyXGMMqh1OPuIP+WkDXA6HUAXgmg0x8yeIEikBEp9JHfcHM0p/xjxqgU1nICBMQ4sKcqMRlfWV+YjDG0lQOKNisCQp4LDNp88TkVTSgn74jfyv8ISGB7g9IyFc9tjiHn1Cmn1amIqunLu01ByVWq2iwFHCw4SGPNKHddh4F9hyVBeXIoSFD53sKa05kDgcLvtPR80/UmhYuiJ9lm/zXLm8LZyOpa5mjclFnYNmTm9HaVcIWAnjy3ocI4LLdPJZARxqv6XB75n0f1Sg69psTCtqdEr1Oi98ESvZYqen1UcdgpcfhuEt2Zf3F03JDot0j0e5Dod0r0+5SI8wOeCueFmu4pZdQpZfQBDbkn+XEn+fEHtNpbyf+QnNFFg7ox98h7XmDl/fNWsl+xkDeVp85Ze621exv3NcduGjBWcFAi/rzgyscJpg/Nileetreby7SiqFeDIjDDNxwzrpauMvbTJ+OhMQ7RzxjRe4XV2QiD0Xg4NRdTVhr12lTcu9sT3q50xpikTKJbFCGudtLm1R6ZCItXIX1JFyjBVzgMEd2SCbU6y3OCF9XbRKbKICDHqdxnNkr1d6rLu4VL7d3WbLonSvsm7FSlff88pGYrSgHUvzdq2YxUJVVXaDnq1UhfNdXhNtN/E0AmmUmOebyxW+20Qr6pnyrp9ayWAZaOsNbZ2bmduhLdW7O9Z3ouafjytKEi4F8cNqO9ddZK2a8etQ3Q/2zS6srrKTX+XuZss3R/d8zKb+L0D1BLAwQKAAAAAAB6lX9cAAAAAAAAAAAAAAAACQAAAGRvY1Byb3BzL1BLAwQKAAAACAB6lX9cjCNK7DsBAACDAgAAEQAAAGRvY1Byb3BzL2NvcmUueG1slZLRbsIgFIZfpeG+pbWbOtJisi1ezWTJNDO7I3BUskIJMKtvP1q11sybXcL/8eU/py1mB1VFe7BO1rpEWZKiCDSvhdTbEq2W83iKIueZFqyqNZToCA7NaMEN4bWFd1sbsF6Ci4JHO8JNiXbeG4Kx4ztQzCWB0CHc1FYxH452iw3j32wLeJSmY6zAM8E8w60wNr0RnZWC90rzY6tOIDiGChRo73CWZPjKerDK3X3QJQNSSX80cBe9hD19cLIHm6ZJmrxDQ/8MrxdvH92osdTtpjggWghOuAXma0tXOtZMgSjw4LJdYMWcX4RNbySI5+OA+5u1uIW9bL8SzTqiPxbnoU9uEFEoS06jXZLP/OV1OUd0lI7GcZrHebbMpuQhJ495Mpk8fbXVbhxXqTqX+K91mg6sFwntmt/+OPQXUEsDBAoAAAAIAHqVf1weKelacAIAAGQMAAASAAAAd29yZC9udW1iZXJpbmcueG1szZdLbtswEIavInDvUHLkB4QoQdsghYu+gKYHoCXaJsIXSEqKz9BFd+22Z+tJOpQs+VEgsGUE8Ma0ODPf/BQ5Q+jm7lnwoKTGMiVTFF2FKKAyUzmTyxR9f3wYTFFgHZE54UrSFK2pRXe3N1UiCzGnBtwCkSWzpVSGzDk4VFEcVNEoqHQUowDo0iaVzlK0ck4nGNtsRQWxV4JlRlm1cFeZElgtFiyjuFImx8MwCut/2qiMWgs53hFZEtvixP80pakE40IZQRw8miUWxDwVegB0TRybM87cGtjhuMWoFBVGJhvEoBPkQ5JG0GZoI8wxeZuQe5UVgkpXZ8SGctCgpF0xvV1GXxoYVy2kfGkRpeDbLYji8/bg3pAKhi3wGPl5EyR4o/xlYhQesSMe0UUcI2E/Z6tEECa3iXu9mp2XG41OAwwPAXp53ua8N6rQWxo7jzaTTx3LF/0JrM0m7y7Nnifm24poinzLIXPrDMnc50IEe0+zHFoX8m0nMRS6lfGTTXd6s3DUvDWUPKUorCmi4I59pCXlj2tNAVQSDgrXc8PyT97GvQ1h78tLDg4MBh9dJ3BQhlDLJfUpvU+dr8VETRw0xwfRTc4LzqnriI/0uTP9/f2zm/+QtbOcLjbu+qvxA5M52Px0iiZDryRZEbmsm/T1OPS+eOOMa9ah+Oh1xP84VXwUxz3UD19F/a8/p6ofRuMe6q8v5OAMp9Me6uMLOTkgtof60YWcnPi6T9WOL+TkjMI+VTu5FPWTPlU7vRD14/i4qsV7N+JGVVD/NtfjwQ06yw8WAZQv8CEAtyDdufO6Je/YtlF4L6x+lj453vk+uP0HUEsDBAoAAAAAAHqVf1wAAAAAAAAAAAAAAAAGAAAAX3JlbHMvUEsDBAoAAAAIAHqVf1wfo5KW5gAAAM4CAAALAAAAX3JlbHMvLnJlbHOtks9KAzEQh18lzL0721ZEpGkvUuhNpD5ASGZ3g80fJlOtb28oilbq2kOPmfzmyzdDFqtD2KlX4uJT1DBtWlAUbXI+9hqet+vJHayWiyfaGamJMvhcVG2JRcMgku8Rix0omNKkTLHedImDkXrkHrOxL6YnnLXtLfJPBpwy1cZp4I2bgtq+Z7qEnbrOW3pIdh8oypknfiUq2XBPouEtsUP3WW4qFvC8zexym78nxUBinBGDNjFNMtduFk/lW6i6PNZyOSbGhObXXA8dhKIjN65kch4zurmmkd0XSeGfFR0zX0p48jGXH1BLAwQKAAAACAB6lX9c0nf8t20AAAB7AAAAGwAAAHdvcmQvX3JlbHMvZm9vdGVyMS54bWwucmVsc02MQQ4CIQxFr0K6d4oujDHDzG4OYPQADVYgDoVQYjy+LF3+vPf+vH7zbj7cNBVxcJwsGBZfnkmCg8d9O1xgXeYb79SHoTFVNSMRdRB7r1dE9ZEz6VQqyyCv0jL1MVvASv5NgfFk7Rnb/wfg8gNQSwMECgAAAAgAepV/XPsblxjgAQAAsQcAABAAAAB3b3JkL2Zvb3RlcjEueG1s1ZXbTuMwEIZfJfJ966RiV6uIgKoC1d4hbfcBjOM0XuKDZpyE7tOvnVNhgSrQK25iZw6f/5mJ28vrJ1VFjQCURmckWcYkEpqbXOp9Rn7v7hY/yPXVZZsWDiIfqjFtLc9I6ZxNKUVeCsVwqSQHg6ZwS24UNUUhuaCtgZyu4iTudhYMF4ieu2G6YUgGnHpNM1Zo7ywMKOb8K+ypYvBY24WnW+bkg6ykO3h2/H3EmIzUoNMBsZgEhZS0FzQsYwbMObdPuTG8VkK77kQKovIajMZS2mMZn6V5ZzlCmlNFNKoi0wiSi/NmcAOs9csROEd+3iepqld+mpjEMyYSEFPGHAkvzxyVKCb18eBPteZZc5NvHwOs/gfY/XnD2YKp7ZEmz6P91I8TS4sPsYYhPy8NzxPzq2RWkPCDYrvHPYQFLePeGbUpK5zwFzMmNNj/cG9qWJUR7u+LgGClU1b/GPZ3RjsMAOTSN2zj42s4RFvjSsmJd3B8yyoYujVK9pavXGt8jeqE4d9R2CoeLRt8aaOTOBe61xXp229BoIDGN2ERQlwf+KXqKap8UzKIpt3uYH1lD2Lvr2GXLTU62Imndyq/X29vA28KO0FFYRkwJ3rwO0FC56PEL9XJWV8G7S4L7f6Dr/4BUEsDBAoAAAAIAHqVf1zAsnObowEAALgIAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLVWy07DMBD8lShX1LhwQAi15cDjCBzgA1x7kxpir2VvCvw96/QhBZpSoLllPTM7E+9GyuTq3dbZEkI06Kb5aTHOM3AKtXHVNH9+uhtd5FezydOHh5gx1cVpviDyl0JEtQArY4EeHCMlBiuJy1AJL9WrrECcjcfnQqEjcDSi1COfTW6glE1N2fXqPLWe5sYmvndVnt2+8/EqTqrFXsWLh66kPfi15ifJ3PqOItX7FZUpO4pU71fEZXXC99hR8VmvSnpfGyWJiWLp9Jc5jNYzKALULScujI/fDBiNBzl8Fab6j8mwLI0CjaqxLClwXjaR2aDvuEnHBDVRe20PvKHBaPiPzxsG7QMqiJGX29bFFrHSuNXNPMpA99Jyb5HoYktZv+4gOSJ91BB3B1hh/7LfLILCACM29hDI7PDjgI+MRpGIx3xh1URCe5h1Sz2mOaRt0qAPsufWg07aNXYOgZ93D3sLDxqiRCSH1LdxW3jQEDyTPRk26LCfHRDxU9+Ht0YHjaDQJqAnwgYdeBu4kZzX0LcNa3jwlYTQv48QTjf+ov0VmX0CUEsDBAoAAAAIAHqVf1xYedsikgAAAOQAAAATAAAAZG9jUHJvcHMvY3VzdG9tLnhtbJ3OQQrCMBCF4auU2dtUFyKlaTfi2kV1H9JpG2hmQiYt9vZGBA/g8vHDx2u6l1+KDaM4Jg3HsoICyfLgaNLw6G+HCxSSDA1mYUINOwp0bXOPHDAmh1JkgETDnFKolRI7ozdS5ky5jBy9SXnGSfE4OotXtqtHSupUVWdlV0nsD+HHwdert/QvObD9vJNnv4fsqfYNUEsDBAoAAAAIAHqVf1zi/J3akwAAAOYAAAAQAAAAZG9jUHJvcHMvYXBwLnhtbJ3OQQrCMBCF4auE7G2qC5HStBtx7aK6D8m0DTQzIRNLe3sjggdw+fjh47X9FhaxQmJPqOWxqqUAtOQ8Tlo+htvhIgVng84shKDlDiz7rr0nipCyBxYFQNZyzjk2SrGdIRiuSsZSRkrB5DLTpGgcvYUr2VcAzOpU12cFWwZ04A7xB8qv2Kz5X9SR/fzj57DH4qnuDVBLAwQKAAAACAB6lX9cnInJkc4BAACtBgAAEgAAAHdvcmQvZm9vdG5vdGVzLnhtbNWUzU7jMBDHXyXyvXVSAVpFTTmAQNwQ3X0A4ziNhe2xbCehb7+TxE26LKoKPXGJv2Z+85+Z2Ovbd62SVjgvwRQkW6YkEYZDKc2uIH9+Pyx+kcQHZkqmwIiC7IUnt5t1l1cAwUAQPkGC8XlneUHqEGxOqee10MwvteQOPFRhyUFTqCrJBe3AlXSVZukwsw648B7D3THTMk8iTv9PAysMHlbgNAu4dDuqmXtr7ALplgX5KpUMe2SnNwcMFKRxJo+IxSSod8lHQXE4eLhz4o4u98AbLUwYIlInFGoA42tp5zS+S8PD+gBpTyXRakWmFmRXl/Xg3rEOhxl4jvxydNJqVH6amKVndKRHTB7nSPg35kGJZtLMgb9VmqPiZtdfA6w+AuzusuY8OmjsTJOX0Z7M28TqL/YXWLHJx6n5y8Rsa2bxBmqeP+0MOPaqUBG2LMGqJ/1vTY6fnKTLw96ihReWORbAEdySZUEW2WBoh8+z6wdvGccIaMCqIPB2p72xkn3Oq6tp8dL0IVkTgNDNmk7u4yfOt2Gv+ugtUwV5iGpeRCUcvpkiOkbjaj6O+xNukj0d0EEznb0+TZeDCdI0wyuz/Zh6+hMy/zSDU1U4WvjNX1BLAwQKAAAACAB6lX9c0nf8t20AAAB7AAAAHQAAAHdvcmQvX3JlbHMvZm9vdG5vdGVzLnhtbC5yZWxzTYxBDgIhDEWvQrp3ii6MMcPMbg5g9AANViAOhVBiPL4sXf689/68fvNuPtw0FXFwnCwYFl+eSYKDx307XGBd5hvv1IehMVU1IxF1EHuvV0T1kTPpVCrLIK/SMvUxW8BK/k2B8WTtGdv/B+DyA1BLAwQKAAAACAB6lX9cP0qOjcEBAACSBgAAEQAAAHdvcmQvZW5kbm90ZXMueG1szZTbbuMgEIZfxeI+wY661cqK04seVr2rmt0HoBjHqMAgwPbm7Xd8CM62VZQ2N70xp5lv/pkxrG/+apW0wnkJpiDZMiWJMBxKaXYF+fP7YfGT3GzWXS5MaSAIn6C98XlneUHqEGxOqee10MwvteQOPFRhyUFTqCrJBe3AlXSVZukwsw648B7ht8y0zJMJp9/TwAqDhxU4zQIu3Y5q5l4bu0C6ZUG+SCXDHtnp9QEDBWmcySfEIgrqXfJR0DQcPNw5cUeXO+CNFiYMEakTCjWA8bW0cxpfpeFhfYC0p5JotSKxBdnVZT24c6zDYQaeI78cnbQalZ8mZukZHekR0eMcCf/HPCjRTJo58JdKc1Tc7MfnAKu3ALu7rDm/HDR2psnLaI/mNbKM+BRravJxav4yMduaWbyBmuePOwOOvShUhC1LsOpJ/1uToxcn6fKwt2jghWWOBXAEt2RZkEU22Nnh8+T6wVvGMQAasCoIvNxpb6xkn/LqKi6emz4iawIQulnT6D5+pvk27FUfvWWqIPejmGdRCYfvo5j8JlsRT6ftCIui4wEdFNPo9FGqHEyQphkemO3btNPvn/WH+k9UYJ77zT9QSwMECgAAAAgAepV/XNJ3/LdtAAAAewAAABwAAAB3b3JkL19yZWxzL2VuZG5vdGVzLnhtbC5yZWxzTYxBDgIhDEWvQrp3ii6MMcPMbg5g9AANViAOhVBiPL4sXf689/68fvNuPtw0FXFwnCwYFl+eSYKDx307XGBd5hvv1IehMVU1IxF1EHuvV0T1kTPpVCrLIK/SMvUxW8BK/k2B8WTtGdv/B+DyA1BLAwQKAAAACAB6lX9cTZ/KyqEBAABzBQAAEQAAAHdvcmQvc2V0dGluZ3MueG1spZTdbtswDIVfxdB9IrtYi8GoW3Qr1vVi2EW3B2Al2RYiUYIk28vbj47juD9AkTRXkkHxO0ekxevbf9ZkvQpRO6xYsc5ZplA4qbGp2N8/P1ZfWRYToATjUFVsqyK7vbkeyqhSokMxIwDGcvCiYm1KvuQ8ilZZiGurRXDR1WktnOWurrVQfHBB8ou8yHc7H5xQMRLoO2APke1x9j3NeYUUrF2wkOgzNNxC2HR+RXQPST9ro9OW2PnVjHEV6wKWe8TqYGhMKSdD+2XOCMfoTin3TnRWYdop8qAMeXAYW+2Xa3yWRsF2hvQfXaK3hh1aUHw5rwf3AQZaFuAx9uWUZM3k/GNikR/RkRFxyDjGwmvN2YkFjYvwp0rzorjF5WmAi7cA35zXnIfgOr/Q9Hm0R9wcWOO7PoG1b/LLq8XzzDy14OkFWlE+NugCPBtyRC3LqOrZ+FuzceJIHb2B7TcQm4ZqgXKXxseQ6hXeofwt5U8FkqZZNpQ9mIrVYKJiuzPTlFh2T9MAm08Wl4y2CJakXw2UX06qMdSFE0o+SvJFky/z8uY/UEsDBAoAAAAIAHqVf1yLhjnExQEAAMYIAAARAAAAd29yZC9jb21tZW50cy54bWyl1N1y4iAYBuBbcThXklhTN9O0J53t9HjbC6CAwjT8DKDRu19SJUmXnU6CR+ok35OX18DD00k0iyM1litZg3yVgQWVWBEu9zV4f/u93IKFdUgS1ChJa3CmFjw9PrQVVkJQ6ezCA9JW+FQD5pyuILSYUYHsSnBslFU7t/L3QrXbcUwhMaj1Niyy/A5ihoyjJ9Ab+WxkA3/BbQwVCVCewSKPqfVsqoRdqgi6S4J8qkjapEn/WVyZJhWxdJ8mrWNpmyZFr5PAEaQ0lf7iThmBnP9p9lAg83nQSw9r5PgHb7g7ezMrA4O4/ExI5Kd6QazJbOEeCkVosyZBUTU4GFld55f9fBe9usxfP8KEmbL+y8izwoduO3+tHBra+C6UtIxr29eZqvmLLCDHnxZxFE24r9X5xO3SKkO6vrKvb9ooTK31HT5fqhzAKfGv/YvmkvxnMc8m/CMd0U9MifD9mSGJ8G/h8OCkakbl5hMPkAAUEVBiOvHAD8b2akA87NDO4RO3RnDK3uFk5KSFGQGWOMJmKUXoFXazyCGGLBuLdF6oTc+dxagjvb9tI7wYddCDxm/TXodjrZXzFpiV/7au7W1h/jCkKYCPfwFQSwMECgAAAAgAepV/XNJ3/LdtAAAAewAAABwAAAB3b3JkL19yZWxzL2NvbW1lbnRzLnhtbC5yZWxzTYxBDgIhDEWvQrp3ii6MMcPMbg5g9AANViAOhVBiPL4sXf689/68fvNuPtw0FXFwnCwYFl+eSYKDx307XGBd5hvv1IehMVU1IxF1EHuvV0T1kTPpVCrLIK/SMvUxW8BK/k2B8WTtGdv/B+DyA1BLAwQKAAAACAB6lX9cY+1e1h0BAABDAwAAEgAAAHdvcmQvZm9udFRhYmxlLnhtbJ3R3W7CIBQH8Fch3Cu1mY1prN4sS3a/PQACtUQOp+Hg1LcfrbZr4o3dFRDy/+V8bPdXcOzHBLLoK75aZpwZr1Bbf6z499fHYsMZRem1dOhNxW+G+H63vZQ1+kgspT2VoCrexNiWQpBqDEhaYmt8+qwxgIzpGY4CZDid24VCaGW0B+tsvIk8ywr+YMIrCta1VeYd1RmMj31eBOOSiJ4a29KgXV7RLhh0G1AZotQxuLsH0vqRWb09QWBVQMI6LlMzj4p6KsVXWX8D9wes5wH5E1Aoc51nbB6GSMmpY/U8pxgdqyfO/4qZAKSjbmYp+TBX0WVllI2kZiqaeUWtR+4G3YxAlZ9Hj0EeXJLS1llaHOthdp9cd7D7MtjQAhe7X1BLAwQKAAAACAB6lX9c0nf8t20AAAB7AAAAHQAAAHdvcmQvX3JlbHMvZm9udFRhYmxlLnhtbC5yZWxzTYxBDgIhDEWvQrp3ii6MMcPMbg5g9AANViAOhVBiPL4sXf689/68fvNuPtw0FXFwnCwYFl+eSYKDx307XGBd5hvv1IehMVU1IxF1EHuvV0T1kTPpVCrLIK/SMvUxW8BK/k2B8WTtGdv/B+DyA1BLAQIUAAoAAAAAAHqVf1wAAAAAAAAAAAAAAAAFAAAAAAAAAAAAEAAAAAAAAAB3b3JkL1BLAQIUAAoAAAAAAHqVf1wAAAAAAAAAAAAAAAALAAAAAAAAAAAAEAAAACMAAAB3b3JkL19yZWxzL1BLAQIUAAoAAAAIAHqVf1wvyqK9BAEAAKEEAAAcAAAAAAAAAAAAAAAAAEwAAAB3b3JkL19yZWxzL2RvY3VtZW50LnhtbC5yZWxzUEsBAhQACgAAAAgAepV/XIS2Jx4FCwAA3lQAABEAAAAAAAAAAAAAAAAAigEAAHdvcmQvZG9jdW1lbnQueG1sUEsBAhQACgAAAAgAepV/XP/lAawYAwAAVREAAA8AAAAAAAAAAAAAAAAAvgwAAHdvcmQvc3R5bGVzLnhtbFBLAQIUAAoAAAAAAHqVf1wAAAAAAAAAAAAAAAAJAAAAAAAAAAAAEAAAAAMQAABkb2NQcm9wcy9QSwECFAAKAAAACAB6lX9cjCNK7DsBAACDAgAAEQAAAAAAAAAAAAAAAAAqEAAAZG9jUHJvcHMvY29yZS54bWxQSwECFAAKAAAACAB6lX9cHinpWnACAABkDAAAEgAAAAAAAAAAAAAAAACUEQAAd29yZC9udW1iZXJpbmcueG1sUEsBAhQACgAAAAAAepV/XAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAQAAAANBQAAF9yZWxzL1BLAQIUAAoAAAAIAHqVf1wfo5KW5gAAAM4CAAALAAAAAAAAAAAAAAAAAFgUAABfcmVscy8ucmVsc1BLAQIUAAoAAAAIAHqVf1zSd/y3bQAAAHsAAAAbAAAAAAAAAAAAAAAAAGcVAAB3b3JkL19yZWxzL2Zvb3RlcjEueG1sLnJlbHNQSwECFAAKAAAACAB6lX9c+xuXGOABAACxBwAAEAAAAAAAAAAAAAAAAAANFgAAd29yZC9mb290ZXIxLnhtbFBLAQIUAAoAAAAIAHqVf1zAsnObowEAALgIAAATAAAAAAAAAAAAAAAAABsYAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQACgAAAAgAepV/XFh52yKSAAAA5AAAABMAAAAAAAAAAAAAAAAA7xkAAGRvY1Byb3BzL2N1c3RvbS54bWxQSwECFAAKAAAACAB6lX9c4vyd2pMAAADmAAAAEAAAAAAAAAAAAAAAAACyGgAAZG9jUHJvcHMvYXBwLnhtbFBLAQIUAAoAAAAIAHqVf1ycicmRzgEAAK0GAAASAAAAAAAAAAAAAAAAAHMbAAB3b3JkL2Zvb3Rub3Rlcy54bWxQSwECFAAKAAAACAB6lX9c0nf8t20AAAB7AAAAHQAAAAAAAAAAAAAAAABxHQAAd29yZC9fcmVscy9mb290bm90ZXMueG1sLnJlbHNQSwECFAAKAAAACAB6lX9cP0qOjcEBAACSBgAAEQAAAAAAAAAAAAAAAAAZHgAAd29yZC9lbmRub3Rlcy54bWxQSwECFAAKAAAACAB6lX9c0nf8t20AAAB7AAAAHAAAAAAAAAAAAAAAAAAJIAAAd29yZC9fcmVscy9lbmRub3Rlcy54bWwucmVsc1BLAQIUAAoAAAAIAHqVf1xNn8rKoQEAAHMFAAARAAAAAAAAAAAAAAAAALAgAAB3b3JkL3NldHRpbmdzLnhtbFBLAQIUAAoAAAAIAHqVf1yLhjnExQEAAMYIAAARAAAAAAAAAAAAAAAAAIAiAAB3b3JkL2NvbW1lbnRzLnhtbFBLAQIUAAoAAAAIAHqVf1zSd/y3bQAAAHsAAAAcAAAAAAAAAAAAAAAAAHQkAAB3b3JkL19yZWxzL2NvbW1lbnRzLnhtbC5yZWxzUEsBAhQACgAAAAgAepV/XGPtXtYdAQAAQwMAABIAAAAAAAAAAAAAAAAAGyUAAHdvcmQvZm9udFRhYmxlLnhtbFBLAQIUAAoAAAAIAHqVf1zSd/y3bQAAAHsAAAAdAAAAAAAAAAAAAAAAAGgmAAB3b3JkL19yZWxzL2ZvbnRUYWJsZS54bWwucmVsc1BLBQYAAAAAGAAYAAMGAAAQJwAAAAA=';
+
+// Base64 do word/document.xml original (para reconstrução com variáveis)
+const _DENTRIX_DOC_XML_B64 = 'PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pjx3OmRvY3VtZW50IG1jOklnbm9yYWJsZT0idzE0IHcxNSB3cDE0IiB4bWxuczp3cGM9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxMC93b3JkcHJvY2Vzc2luZ0NhbnZhcyIgeG1sbnM6bWM9Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9tYXJrdXAtY29tcGF0aWJpbGl0eS8yMDA2IiB4bWxuczpvPSJ1cm46c2NoZW1hcy1taWNyb3NvZnQtY29tOm9mZmljZTpvZmZpY2UiIHhtbG5zOnI9Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9vZmZpY2VEb2N1bWVudC8yMDA2L3JlbGF0aW9uc2hpcHMiIHhtbG5zOm09Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9vZmZpY2VEb2N1bWVudC8yMDA2L21hdGgiIHhtbG5zOnY9InVybjpzY2hlbWFzLW1pY3Jvc29mdC1jb206dm1sIiB4bWxuczp3cDE0PSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL29mZmljZS93b3JkLzIwMTAvd29yZHByb2Nlc3NpbmdEcmF3aW5nIiB4bWxuczp3cD0iaHR0cDovL3NjaGVtYXMub3BlbnhtbGZvcm1hdHMub3JnL2RyYXdpbmdtbC8yMDA2L3dvcmRwcm9jZXNzaW5nRHJhd2luZyIgeG1sbnM6dzEwPSJ1cm46c2NoZW1hcy1taWNyb3NvZnQtY29tOm9mZmljZTp3b3JkIiB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iIHhtbG5zOncxND0iaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS9vZmZpY2Uvd29yZC8yMDEwL3dvcmRtbCIgeG1sbnM6dzE1PSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL29mZmljZS93b3JkLzIwMTIvd29yZG1sIiB4bWxuczp3cGc9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxMC93b3JkcHJvY2Vzc2luZ0dyb3VwIiB4bWxuczp3cGk9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxMC93b3JkcHJvY2Vzc2luZ0luayIgeG1sbnM6d25lPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL29mZmljZS93b3JkLzIwMDYvd29yZG1sIiB4bWxuczp3cHM9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxMC93b3JkcHJvY2Vzc2luZ1NoYXBlIiB4bWxuczpjeD0iaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS9vZmZpY2UvZHJhd2luZy8yMDE0L2NoYXJ0ZXgiIHhtbG5zOmN4MT0iaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS9vZmZpY2UvZHJhd2luZy8yMDE1LzkvOC9jaGFydGV4IiB4bWxuczpjeDI9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL2RyYXdpbmcvMjAxNS8xMC8yMS9jaGFydGV4IiB4bWxuczpjeDM9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL2RyYXdpbmcvMjAxNi81LzkvY2hhcnRleCIgeG1sbnM6Y3g0PSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL29mZmljZS9kcmF3aW5nLzIwMTYvNS8xMC9jaGFydGV4IiB4bWxuczpjeDU9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL2RyYXdpbmcvMjAxNi81LzExL2NoYXJ0ZXgiIHhtbG5zOmN4Nj0iaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS9vZmZpY2UvZHJhd2luZy8yMDE2LzUvMTIvY2hhcnRleCIgeG1sbnM6Y3g3PSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL29mZmljZS9kcmF3aW5nLzIwMTYvNS8xMy9jaGFydGV4IiB4bWxuczpjeDg9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL2RyYXdpbmcvMjAxNi81LzE0L2NoYXJ0ZXgiIHhtbG5zOmFpbms9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL2RyYXdpbmcvMjAxNi9pbmsiIHhtbG5zOmFtM2Q9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL2RyYXdpbmcvMjAxNy9tb2RlbDNkIiB4bWxuczp3MTZjZXg9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxOC93b3JkbWwvY2V4IiB4bWxuczp3MTZjaWQ9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxNi93b3JkbWwvY2lkIiB4bWxuczp3MTY9Imh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vb2ZmaWNlL3dvcmQvMjAxOC93b3JkbWwiIHhtbG5zOncxNnNkdGRoPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL29mZmljZS93b3JkLzIwMjAvd29yZG1sL3NkdGRhdGFoYXNoIiB4bWxuczp3MTZzZT0iaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS9vZmZpY2Uvd29yZC8yMDE1L3dvcmRtbC9zeW1leCI+PHc6Ym9keT48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIvPjx3OmJDcy8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+RVhDRUxFTlTDjVNTSU1PIChBKSBTRU5IT1IgKEEpIERPVVRPUiAoQSkgSlVJWiAoQSkgREUgRElSRUlUTyBEQSBDT01BUkNBIERFIHt7Q09NQVJDQX19IERPIEVTVEFETyBERSBTw4NPIFBBVUxPLiA8L3c6dD48L3c6cj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6Zmlyc3RMaW5lPSIxNDE4Ii8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPnt7Q0xJRU5URX19PC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+LCBkb3JhdmFudGUgZGVub21pbmFkYSA8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPk9SVEhPRE9OVElDPC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+LCBwZXNzb2EganVyw61kaWNhIGRlIGRpcmVpdG8gcHJpdmFkbywgZXN0YWJlbGVjaWRvIG5hIFJ1YSBDYXBpdMOjbyBNaXJhbmRhLCBuwrogMTc2LCBBbXBhcm8vU1AsIENFOiAxMzkwMC0wMzAsIGluc2NyaXRhIG5vIENOUEogc29iIG8gbsK6IDIyLjUyNC4xNzcvMDAwMS0zOSwgcG9yIGludGVybcOpZGlvIGRlIHNldSBhZHZvZ2FkbyBpbmZyYS1hc3NpbmFkbywgZGV2aWRhbWVudGUgY29uc3RpdHXDrWRvLCB2ZW0gw6AgcHJlc2Vuw6dhIGRlIFZvc3NhIEV4Y2Vsw6puY2lhLCBjb20gZnVuZGFtZW50byBuYSBsZWkgbsK6IDYuODMwLzgwLCBjL2MgbyBhcnRpZ28gODI0IGUgc2VndWludGVzIGRvIEPDs2RpZ28gZGUgUHJvY2Vzc28gQ2l2aWwsIHByb3BvciBhIHByZXNlbnRlPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIi8+PHc6amMgdzp2YWw9ImNlbnRlciIvPjwvdzpwUHI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6Yi8+PHc6YkNzLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5Bw4fDg08gREUgRVhFQ1XDh8ODTyBERSBUw41UVUxPIEVYVFJBSlVESUNJQUw8L3c6dD48L3c6cj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPmVtIGZhY2UgZGUgPC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6Yi8+PHc6YkNzLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj57e0VYRUNVVEFET319PC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+LCBpbnNjcml0byBubyBDUEYgc29iIG8gbsK6IHt7Q1BGfX0sIHJlc2lkZW50ZSBlIGRvbWljaWxpYWRvIG5hIHt7RU5ERVJFQ099fSwgcGVsb3MgbW90aXZvcyBkZSBmYXRvIGUgZGUgZGlyZWl0byBhIHNlZ3VpciBleHBvc3RvczogPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPkkuPC93OnQ+PC93OnI+PHc6dGFiLz48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPkRPUyBGQVRPUzwvdzp0PjwvdzpyPjwvdzpwPjx3OnA+PHc6cFByPjx3OnNwYWNpbmcgdzphZnRlcj0iMCIgdzpsaW5lPSIzNjAiIHc6bGluZVJ1bGU9ImF1dG8iLz48L3c6cFByPjwvdzpwPjx3OnA+PHc6cFByPjx3OnNwYWNpbmcgdzphZnRlcj0iMCIgdzpsaW5lPSIzNjAiIHc6bGluZVJ1bGU9ImF1dG8iLz48dzppbmQgdzpmaXJzdExpbmU9IjE0MTgiLz48dzpqYyB3OnZhbD0iYm90aCIvPjwvdzpwUHI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+QSBwYXJ0ZSBleGVjdXRhZGEgcHJvY3Vyb3UgcGVsb3Mgc2VydmnDp29zIG9kb250b2zDs2dpY29zLCBvZmVydGFkb3MgcGVsYSBFeGVxdWVudGUsIHJlYWxpemFuZG8gY29uc3VsdGEgZSB0cmF0YW1lbnRvLCBpbmNsdWluZG8gdG9kYSBhIGFwYXJhdG9sb2dpYSBuZWNlc3PDoXJpYSBwYXJhIG8gdHJhdGFtZW50byBvZG9udG9sw7NnaWNvLCBvcmlnaW5hbmRvIGEgZW1pc3PDo28gZG8gaW5jbHVzbyBUZXJtbyBkZSBDb25maXNzw6NvIGRlIETDrXZpZGEsIG5vIHF1YWwgcGVyZmF6IGEgaW1wb3J0w6JuY2lhIGzDrXF1aWRhLCBjZXJ0YSBlIGV4aWfDrXZlbCBubyBtb250YW50ZSBhdHVhbGl6YWRvIGRlIDwvdzp0PjwvdzpyPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIvPjx3OmJDcy8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+e3tWQUxPUn19IHt7VkFMT1JfRVhURU5TT319PC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+LCBjb25mb3JtZSBwbGFuaWxoYSBhbmV4YS4gPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPklJLjwvdzp0PjwvdzpyPjx3OnRhYi8+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6Yi8+PHc6YkNzLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5ETyBESVJFSVRPIDwvdzp0PjwvdzpyPjwvdzpwPjx3OnA+PHc6cFByPjx3OnNwYWNpbmcgdzphZnRlcj0iMCIgdzpsaW5lPSIzNjAiIHc6bGluZVJ1bGU9ImF1dG8iLz48L3c6cFByPjwvdzpwPjx3OnA+PHc6cFByPjx3OnNwYWNpbmcgdzphZnRlcj0iMCIgdzpsaW5lPSIzNjAiIHc6bGluZVJ1bGU9ImF1dG8iLz48dzppbmQgdzpmaXJzdExpbmU9IjE0MTgiLz48dzpqYyB3OnZhbD0iYm90aCIvPjwvdzpwUHI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+TyBUZXJtbyBkZSBDb25maXNzw6NvIGRlIETDrXZpZGEsIGFpbmRhIGNvbSBmb3LDp2EgZXhlY3V0aXZhLCB1bWEgdmV6IHF1ZSBkZW50cm8gZG8gcHJhem8gcHJlc2NyaWNpb25hbCBkZSB0csOqcyBhbm9zIG7Do28gc2UgY29tcGxldG91LiBBZGVtYWlzLCBub3MgdGVybW9zIGRvIGFydC4gMzk3IGRvIENDLCBvcyBqdXJvcyBkZSBtb3JhIHPDo28gY29udGFkb3MgYSBwYXJ0aXIgZG8gaW5hZGltcGxlbWVudG8gZGEgcGFyY2VsYSBlIG7Do28gZGEgY2l0YcOnw6NvLCBwb3Igc2UgdHJhdGFyIGRlIG9icmlnYcOnw6NvIHBvc2l0aXZhIGUgbMOtcXVpZGEuPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTU1OSIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTU1OSIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiIHc6dmFsPSJmYWxzZSIvPjx3OmJDcyB3OnZhbD0iZmFsc2UiLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5UZW50YWRvIG8gcmVjZWJpbWVudG8gYW1pZ8OhdmVsLCBleHRyYWp1ZGljaWFsLCByZXN0YXJhbSBpbmZydXTDrWZlcmFzIGFzIGRpbGlnw6puY2lhcywgZXNnb3RhbmRvLXNlIHRvZG9zIG9zIG1laW9zIGRlIHF1ZSBkaXNwdW5oYSBhIGV4ZXF1ZW50ZSBwYXJhIHJlY2ViZXIgbyBzZXUgY3LDqWRpdG8sIG7Do28gcmVzdGFuZG8gb3V0cmEgYWx0ZXJuYXRpdmEgc2Vuw6NvIG8gYWp1aXphbWVudG8gZGEgcHJlc2VudGUgZXhlY3XDp8Ojby4gPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTU1OSIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTU1OSIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPklJSS48L3c6dD48L3c6cj48dzp0YWIvPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIvPjx3OmJDcy8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+RE8gUEVESURPPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6Zmlyc3RMaW5lPSIxNDE4Ii8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPkRpYW50ZSBkbyBleHBvc3RvLCByZXF1ZXItc2UgYSBWb3NzYSBFeGNlbMOqbmNpYTogPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6Zmlyc3RMaW5lPSIxNDE4Ii8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPlBvciB0b2RvIG8gZXhwb3N0bywgcmVxdWVyIGRpZ25lLXNlIFZvc3NhIEV4Y2Vsw6puY2lhIGRldGVybWluYXIgYSBjaXRhw6fDo28gZGEgcGFydGUgZXhlY3V0YWRhLCBwb3IgdmlhIHBvc3RhbCwgbm8gZW5kZXJlw6dvIGFjaW1hIG1lbmNpb25hZG8sIG5vcyB0ZXJtb3MgZG8gYXJ0aWdvIDgyOSBkbyBDUEMsIHBhcmEsIG5vIHByYXpvIGRlIDAzICh0csOqcykgZGlhcywgZWZldHVhciBvIHBhZ2FtZW50byBkYSBpbXBvcnTDom5jaWEgZGUgPC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6Yi8+PHc6YkNzLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5SJCA8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPnt7VkFMT1JfQVRVQUxJWkFET319IHt7VkFMT1JfQVRVQUxJWkFET19FWFRFTlNPfX08L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiIHc6dmFsPSJmYWxzZSIvPjx3OmJDcyB3OnZhbD0iZmFsc2UiLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj4sIGFjcmVzY2lkYSBkZSBhdHVhbGl6YcOnw6NvIG1vbmV0w6FyaWEgZSBqdXJvcyBsZWdhaXMgYXTDqSBvIGVmZXRpdm8gcGFnYW1lbnRvLCBvdSwgbm8gbWVzbW8gcHJhem8sIGluZGljYXIgYmVucyDDoCBwZW5ob3JhLCBzb2IgcGVuYSBkZSBzZXJlbSBwZW5ob3JhZG9zIHRhbnRvcyBiZW5zIHF1YW50b3MgYmFzdGVtIHBhcmEgYXNzZWd1cmFyIGEgZXhlY3XDp8OjbywgaW5kZXBlbmRlbnRlbWVudGUgZGUgbm92YSBpbnRpbWHDp8Ojby4gPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6Zmlyc3RMaW5lPSIxNDE4Ii8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPk5hIGhpcMOzdGVzZSBkbyBuw6NvIHBhZ2FtZW50byBubyBwcmF6byBzdXByYWNpdGFkbywgcmVxdWVyIHNlamEgcmVhbGl6YWRhIGEgcGVuaG9yYSBvbmxpbmUgZSBhdGl2b3MgZmluYW5jZWlyb3MgcGVydGVuY2VudGVzIMOgIGV4ZWN1dGFkYSwgYXRyYXbDqXMgZG8gY29udsOqbmlvIGNvbSBvIHNpc3RlbWEgPC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6Yi8+PHc6YkNzLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5TSVNCQUpVRDwvdzp0PjwvdzpyPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPiwgbmEgbW9kYWxpZGFkZSAmcXVvdDs8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPlRFSU1PU0lOSEE8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiIHc6dmFsPSJmYWxzZSIvPjx3OmJDcyB3OnZhbD0iZmFsc2UiLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj4mcXVvdDssIG5hIGZvcm1hIGRvIGFydGlnbyA4NTQsIGRvIENQQy4gPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6Zmlyc3RMaW5lPSIxNDE4Ii8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPkTDoS1zZSDDoCBjYXVzYSBvIHZhbG9yIGRlIDwvdzp0PjwvdzpyPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIvPjx3OmJDcy8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+UiQge3tWQUxPUl9BVFVBTElaQURPfX0ge3tWQUxPUl9BVFVBTElaQURPX0VYVEVOU099fTwvdzp0PjwvdzpyPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPi4gPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6cmlnaHQ9Ii02IiB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiIHc6dmFsPSJmYWxzZSIvPjx3OmJDcyB3OnZhbD0iZmFsc2UiLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5Qb3IgZmltLCByZXF1ZXIgcXVlIHRvZGFzIGFzIHB1YmxpY2HDp8O1ZXMgc2VqYW0gcmVhbGl6YWRhcywgZXhjbHVzaXZhbWVudGUsIGVtIG5vbWUgZGUgPC93OnQ+PC93OnI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6Yi8+PHc6YkNzLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5DQVXDiiBNQU5UT1ZBTkkgR0FTUEFSSTwvdzp0PjwvdzpyPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPiwgaW5zY3JpdG8gbmEgT0FCL1NQIHNvYiBvIG7CuiA8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPjMyNC4zNzQ8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiIHc6dmFsPSJmYWxzZSIvPjx3OmJDcyB3OnZhbD0iZmFsc2UiLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj4sIGJlbSBjb21vIG5vIGVuZGVyZcOnbyBlbGV0csO0bmljbyAoZS1tYWlsKSBtYW50b3ZhbmljYXVlQGdtYWlsLmNvbSwgc29iIHBlbmEgZGUgbnVsaWRhZGUuPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OnJpZ2h0PSItNiIgdzpmaXJzdExpbmU9IjE0MTgiLz48dzpqYyB3OnZhbD0iYm90aCIvPjwvdzpwUHI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OnJpZ2h0PSItOCIgdzpmaXJzdExpbmU9IjE0MTgiLz48dzpqYyB3OnZhbD0iYm90aCIvPjwvdzpwUHI+PHc6cj48dzpyUHI+PHc6ckZvbnRzIHc6YXNjaWk9IkNlbnR1cnkgR290aGljIiB3OmNzPSJDZW50dXJ5IEdvdGhpYyIgdzplYXN0QXNpYT0iQ2VudHVyeSBHb3RoaWMiIHc6aEFuc2k9IkNlbnR1cnkgR290aGljIi8+PHc6YiB3OnZhbD0iZmFsc2UiLz48dzpiQ3Mgdzp2YWw9ImZhbHNlIi8+PHc6c3ogdzp2YWw9IjIwIi8+PHc6c3pDcyB3OnZhbD0iMjAiLz48L3c6clByPjx3OnQgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+VGVybW9zIGVtIHF1ZSw8L3c6dD48L3c6cj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6cmlnaHQ9Ii04IiB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiIHc6dmFsPSJmYWxzZSIvPjx3OmJDcyB3OnZhbD0iZmFsc2UiLz48dzpzeiB3OnZhbD0iMjAiLz48dzpzekNzIHc6dmFsPSIyMCIvPjwvdzpyUHI+PHc6dCB4bWw6c3BhY2U9InByZXNlcnZlIj5QZWRlIGRlZmVyaW1lbnRvLjwvdzp0PjwvdzpyPjwvdzpwPjx3OnA+PHc6cFByPjx3OnNwYWNpbmcgdzphZnRlcj0iMCIgdzpsaW5lPSIzNjAiIHc6bGluZVJ1bGU9ImF1dG8iLz48dzppbmQgdzpyaWdodD0iLTgiIHc6Zmlyc3RMaW5lPSIxNDE4Ii8+PHc6amMgdzp2YWw9ImJvdGgiLz48L3c6cFByPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPnt7Q09NQVJDQX19LCB7e0RBVEF9fS48L3c6dD48L3c6cj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6cmlnaHQ9Ii04IiB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48L3c6cD48dzpwPjx3OnBQcj48dzpzcGFjaW5nIHc6YWZ0ZXI9IjAiIHc6bGluZT0iMzYwIiB3OmxpbmVSdWxlPSJhdXRvIi8+PHc6aW5kIHc6cmlnaHQ9Ii04IiB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPkNBVcOKIE1BTlRPVkFOSSBHQVNQQVJJPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6c3BhY2luZyB3OmFmdGVyPSIwIiB3OmxpbmU9IjM2MCIgdzpsaW5lUnVsZT0iYXV0byIvPjx3OmluZCB3OmZpcnN0TGluZT0iMTQxOCIvPjx3OmpjIHc6dmFsPSJib3RoIi8+PC93OnBQcj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPk9BQi9TUDwvdzp0PjwvdzpyPjx3OnI+PHc6clByPjx3OnJGb250cyB3OmFzY2lpPSJDZW50dXJ5IEdvdGhpYyIgdzpjcz0iQ2VudHVyeSBHb3RoaWMiIHc6ZWFzdEFzaWE9IkNlbnR1cnkgR290aGljIiB3OmhBbnNpPSJDZW50dXJ5IEdvdGhpYyIvPjx3OmIgdzp2YWw9ImZhbHNlIi8+PHc6YkNzIHc6dmFsPSJmYWxzZSIvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPiA8L3c6dD48L3c6cj48dzpyPjx3OnJQcj48dzpyRm9udHMgdzphc2NpaT0iQ2VudHVyeSBHb3RoaWMiIHc6Y3M9IkNlbnR1cnkgR290aGljIiB3OmVhc3RBc2lhPSJDZW50dXJ5IEdvdGhpYyIgdzpoQW5zaT0iQ2VudHVyeSBHb3RoaWMiLz48dzpiLz48dzpiQ3MvPjx3OnN6IHc6dmFsPSIyMCIvPjx3OnN6Q3Mgdzp2YWw9IjIwIi8+PC93OnJQcj48dzp0IHhtbDpzcGFjZT0icHJlc2VydmUiPk7CuiAzMjQuMzc0PC93OnQ+PC93OnI+PC93OnA+PHc6c2VjdFByPjx3OmZvb3RlclJlZmVyZW5jZSB3OnR5cGU9ImRlZmF1bHQiIHI6aWQ9InJJZDciLz48dzpwZ1N6IHc6dz0iMTE5MDYiIHc6aD0iMTY4MzgiIHc6b3JpZW50PSJwb3J0cmFpdCIvPjx3OnBnTWFyIHc6dG9wPSIxNDE4IiB3OnJpZ2h0PSIxNzAxIiB3OmJvdHRvbT0iMTQxOCIgdzpsZWZ0PSIxNzAxIiB3OmhlYWRlcj0iNzA4IiB3OmZvb3Rlcj0iNzA4IiB3Omd1dHRlcj0iMCIvPjx3OnBnTnVtVHlwZS8+PHc6ZG9jR3JpZCB3OmxpbmVQaXRjaD0iMzYwIi8+PC93OnNlY3RQcj48L3c6Ym9keT48L3c6ZG9jdW1lbnQ+';
+
+// Decodifica base64 → Uint8Array
+function _b64ToU8(b64){
+  const bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return u8;
+}
+
+// Reconstrói word/document.xml aplicando substituição de variáveis
+// Mantém a formatação original de CADA parágrafo intacta
+function _gerarDocumentXml(varsMap){
+  const docXml = new TextDecoder('utf-8').decode(_b64ToU8(_DENTRIX_DOC_XML_B64));
+
+  const bodyIdx = docXml.indexOf('<w:body>');
+  const prefix  = docXml.substring(0, bodyIdx + 8);
+
+  const paraRegex = /<w:p[ >][\s\S]*?<\/w:p>/g;
+  const parasRaw  = [...docXml.matchAll(paraRegex)].map(m => m[0]);
+
+  const sectMatch = docXml.match(/<w:sectPr[\s\S]*?<\/w:sectPr>/);
+  const sectPr    = sectMatch ? sectMatch[0] : '';
+
+  function consolidarPara(pXml){
+    const pprM = pXml.match(/<w:pPr>([\s\S]*?)<\/w:pPr>/);
+    const ppr  = pprM ? pprM[0] : '';
+
+    const tMatches = [...pXml.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)];
+    let fullText   = tMatches.map(m => m[1]).join('');
+
+    for(const [k, v] of Object.entries(varsMap)){
+      fullText = fullText.split(k).join(v);
+    }
+
+    if(!fullText) return `<w:p>${ppr}</w:p>`;
+
+    const pSemPpr = pXml.replace(/<w:pPr>[\s\S]*?<\/w:pPr>/, '');
+    const rprM    = pSemPpr.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/);
+    const rpr     = rprM ? rprM[0] : '';
+
+    return `<w:p>${ppr}<w:r>${rpr}<w:t xml:space="preserve">${xmlEsc(fullText)}</w:t></w:r></w:p>`;
+  }
+
+  const novoBody = parasRaw.map(consolidarPara).join('\n');
+  return prefix + '\n' + novoBody + '\n' + sectPr + '\n</w:body></w:document>';
+}
+
+// Gera o .docx completo como Blob
+// Carrega o DOCX original com JSZip.loadAsync() para preservar TODOS os bytes originais,
+// depois substitui APENAS o word/document.xml com as variáveis preenchidas.
+async function gerarDocxBlob(texto, varsMap){
+  // Carregar o DOCX original (preserva compressão, encoding, estrutura ZIP originais)
+  const modeloBytes = _b64ToU8(_MODELO_DOCX_B64);
+  const zip = await JSZip.loadAsync(modeloBytes);
+
+  // Substituir APENAS o document.xml com as variáveis preenchidas
+  const docXmlStr   = _gerarDocumentXml(varsMap || {});
+  const docXmlBytes = new TextEncoder().encode(docXmlStr);
+  zip.file('word/document.xml', docXmlBytes);
+
+  return await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 }
+  });
+}
+
+async function dlDocx(texto, filename, varsMap){
+  try{
+    const blob = await gerarDocxBlob(texto, varsMap);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e){ toast('Erro ao gerar Word: ' + e.message, 'err'); console.error(e); }
+}
+
+// ════════════════════════════════════════════════════
+// GERAR PDF — idêntico ao Word: margens, recuo, 1,5 linhas
+// ════════════════════════════════════════════════════
+function gerarPDFBytes(texto){
+  const {jsPDF} = window.jspdf;
+  const tpl = templateData;
+
+  const hasLogo   = tpl && tpl.logoBase64;
+  const hasRodape = tpl && tpl.rodapeTexto && tpl.rodapeTexto.trim().length > 2;
+
+  // Margens em mm — espelham o Word (left 3cm, right 2cm, top/bottom ajustados para header/footer)
+  const marginL  = 30;          // 3 cm — igual ao Word
+  const marginR  = 20;          // 2 cm — igual ao Word
+  const marginT  = hasLogo ? 42 : 25;  // espaço para logo + linha
+  const marginB  = hasRodape ? 20 : 15;
+  const pageW    = 210;
+  const pageH    = 297;
+
+  // Largura disponível para texto, descontando recuo direito de 2,5cm do Word
+  const recuoDir = 12.5; // 2,5 cm em mm
+  const textW    = pageW - marginL - marginR - recuoDir; // largura útil do corpo
+
+  // Espaçamento entre linhas: 1,5 linha × 12pt = 18pt × (25.4/72) = ~6.35 mm
+  const lineH = 7.0; // mm por linha de texto (1,5 × 12pt em mm, ligeiramente arredondado)
+  const lineHEmpty = lineH * 0.6; // espaçamento para linhas vazias
+
+  const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+
+  // ── Desenhar logo + rodapé em cada página ──
+  function decorarPagina(){
+    if(hasLogo){
+      try {
+        const ext = (tpl.logoMime||'image/png').split('/')[1].replace('jpeg','JPEG').toUpperCase();
+        const imgEl = new Image();
+        imgEl.src = tpl.logoBase64;
+        const iw = imgEl.naturalWidth  || 300;
+        const ih = imgEl.naturalHeight || 80;
+        const ratio = iw / ih;
+        // Max 70mm wide, 28mm tall
+        let dw = Math.min(70, ratio * 28);
+        let dh = dw / ratio;
+        if(dh > 28){ dh = 28; dw = dh * ratio; }
+        const ix = (pageW - dw) / 2;
+        pdf.addImage(tpl.logoBase64, ext, ix, 7, dw, dh);
+      } catch(e){}
+      // Linha separadora dourada
+      pdf.setDrawColor(184, 150, 62);
+      pdf.setLineWidth(0.4);
+      pdf.line(marginL, marginT - 5, pageW - marginR, marginT - 5);
+      pdf.setDrawColor(0,0,0);
+      pdf.setLineWidth(0.2);
+    }
+
+    if(hasRodape){
+      // Linha separadora dourada acima do rodapé
+      pdf.setDrawColor(184, 150, 62);
+      pdf.setLineWidth(0.3);
+      pdf.line(marginL, pageH - marginB - 1, pageW - marginR, pageH - marginB - 1);
+      pdf.setDrawColor(0,0,0);
+      pdf.setLineWidth(0.2);
+
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(80, 80, 80);
+      // Dividir rodapé em até 2 linhas, centralizado
+      const rodapeLines = pdf.splitTextToSize(tpl.rodapeTexto, pageW - marginL - marginR);
+      rodapeLines.slice(0, 2).forEach((rl, ri) => {
+        pdf.text(rl, pageW / 2, pageH - marginB + 3 + ri * 4, {align:'center'});
+      });
+      pdf.setTextColor(0, 0, 0);
+    }
+  }
+
+  decorarPagina();
+
+  // ── Escrever corpo do texto ──
+  pdf.setFont('times', 'normal');
+  pdf.setFontSize(12);
+  let y = marginT;
+
+  const linhas = texto.split('\n');
+  for(let i = 0; i < linhas.length; i++){
+    const linha = linhas[i];
+    const trim  = linha.trim();
+
+    if(trim === ''){
+      y += lineHEmpty;
+      continue;
+    }
+
+    const isTitulo = trim === trim.toUpperCase() && trim.length > 3 &&
+                     /[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ]/.test(trim) && !trim.includes(':') && trim.length < 90;
+    const isSecao  = /^[IVX]+\s*[–—-]/.test(trim);
+    const isCentro = isTitulo || isSecao || trim.startsWith('EXCELENTÍSSIM') ||
+                     trim.startsWith('DA VARA') || trim.startsWith('___') ||
+                     trim.startsWith('Termos em que');
+    const bold = isTitulo || isSecao;
+
+    pdf.setFont('times', bold ? 'bold' : 'normal');
+
+    // Largura de quebra: centralizado usa largura total; corpo usa textW (com recuo direito)
+    const wrapW = isCentro ? (pageW - marginL - marginR) : textW;
+    const wrapped = pdf.splitTextToSize(linha, wrapW);
+
+    wrapped.forEach((wl) => {
+      if(y > pageH - marginB - lineH){
+        pdf.addPage();
+        decorarPagina();
+        y = marginT;
+      }
+      if(isCentro){
+        pdf.text(wl, pageW / 2, y, {align: 'center'});
+      } else {
+        pdf.text(wl, marginL, y, {align: 'left'});
+      }
+      y += lineH;
+    });
+  }
+
+  return pdf.output('arraybuffer');
+}
+
+function dlPDF(texto, filename){
+  try{
+    const buf = gerarPDFBytes(texto);
+    const blob = new Blob([buf], {type:'application/pdf'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e){ toast('Erro ao gerar PDF: '+e.message,'err'); console.error(e); }
+}
+
+// ════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════
+function parseVal(v){
+  // Se já for número (vindo direto do Excel via raw:true), usar diretamente
+  if(typeof v === 'number') return isNaN(v) ? 0 : Math.round(v * 100) / 100;
+
+  v = String(v).trim();
+  if(!v || v === '-') return 0;
+
+  // Remover símbolo de moeda e espaços
+  v = v.replace(/R\$\s*/g, '').replace(/\s/g, '').trim();
+
+  // Detectar formato:
+  // Brasileiro: 1.718.895,00 ou 210.923,00 ou 1234,56
+  // Americano: 1,718,895.00 ou 210923.00
+  // Inteiro: 210923
+
+  const temVirgula = v.includes(',');
+  const temPonto   = v.includes('.');
+
+  if(temVirgula && temPonto){
+    // Descobrir qual é separador decimal pelo que aparece por último
+    const ultimaVirgula = v.lastIndexOf(',');
+    const ultimoPonto   = v.lastIndexOf('.');
+    if(ultimaVirgula > ultimoPonto){
+      // Formato BR: 1.718.895,00 → remover pontos, trocar vírgula por ponto
+      v = v.replace(/\./g,'').replace(',','.');
+    } else {
+      // Formato US: 1,718,895.00 → remover vírgulas
+      v = v.replace(/,/g,'');
+    }
+  } else if(temVirgula && !temPonto){
+    // Pode ser BR sem milhar: 210923,00 → trocar vírgula por ponto
+    // Ou milhar BR sem decimal: 1.718,895 (improvável) — tratar como decimal
+    const partes = v.split(',');
+    if(partes[1] && partes[1].length <= 2){
+      // Decimal: 1234,56 ou 210923,00
+      v = v.replace(',','.');
+    } else {
+      // Milhar sem decimal: 1,718 → remover vírgula
+      v = v.replace(/,/g,'');
+    }
+  } else if(!temVirgula && temPonto){
+    // Pode ser decimal US: 210923.00 → ok
+    // Ou milhar sem decimal: 1.718.895 → remover pontos
+    const partes = v.split('.');
+    const ultima = partes[partes.length - 1];
+    if(partes.length > 1 && ultima.length === 3 && partes.length >= 2 && !/^\d{1,3}$/.test(partes[0]) === false){
+      // Se todas as partes após o primeiro ponto têm 3 dígitos → milhar
+      const ehMilhar = partes.slice(1).every(p => p.length === 3);
+      if(ehMilhar) v = v.replace(/\./g,'');
+      // else: decimal normal, manter
+    }
+    // se só um ponto e parte decimal com 1-2 dígitos → decimal, manter
+  }
+  // else: só dígitos, manter
+
+  const resultado = parseFloat(v);
+  return isNaN(resultado) ? 0 : Math.round(resultado * 100) / 100;
+}
+function fmtV(n){return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+function valorExtenso(n){
+  if(n===0)return 'zero reais';
+  const e0=[,'um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const e1=[,'','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const e2=[,'cem','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function g3(v){if(!v)return'';const c=Math.floor(v/100),d=Math.floor((v%100)/10),u=v%10;let s='';if(c)s+=(c===1&&(d||u))?'cento':e2[c];if(d===1)s+=(s?' e ':'')+e0[10+u];else{if(d>1)s+=(s?' e ':'')+e1[d];if(u)s+=(s?' e ':'')+e0[u];}return s;}
+  const int=Math.floor(n),dec=Math.round((n-int)*100);
+  const bi=Math.floor(int/1e9),mi=Math.floor((int%1e9)/1e6),mil=Math.floor((int%1e6)/1e3),res=int%1e3;
+  const pp=[];
+  if(bi)pp.push(g3(bi)+(bi===1?' bilhão':' bilhões'));
+  if(mi)pp.push(g3(mi)+(mi===1?' milhão':' milhões'));
+  if(mil)pp.push(g3(mil)+' mil');
+  if(res)pp.push(g3(res));
+  let r=(pp.join(' e ')||'zero')+(int===1?' real':' reais');
+  if(dec)r+=' e '+g3(dec)+(dec===1?' centavo':' centavos');
+  return r;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function sanitize(s){return String(s).replace(/[^a-zA-Z0-9\u00C0-\u024F _-]/g,'').trim().replace(/ +/g,'_').substring(0,60);}
+
+// ════════════════════════════════════════════════════
+// MODALS
+// ════════════════════════════════════════════════════
+function closeOv(id,e){if(e.target.id===id)closeModal(id);}
+function closeModal(id){document.getElementById(id)?.classList.remove('open');}
+
+// ════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════
+let toastT;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show'+(type?' '+type:'');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3400);
+}
+
+// ════════════════════════════════════════════════════
+// ATUALIZAÇÃO DE VALORES — TJSP
+// Multa e honorários vêm POR LINHA da planilha (col. H e I)
+// Formato Excel: 0.5 formatado como % = 50%
+// ════════════════════════════════════════════════════
+
+let atDados = [];
+
+function renderAtStatus(){
+  const sem = document.getElementById('atSemDados');
+  const res = document.getElementById('atResult');
+  if(!registros.length){ sem.style.display='block'; res.style.display='none'; }
+  else { sem.style.display='none'; if(!atDados.length) res.style.display='none'; }
+}
+
+function onModoValorChange(){
+  const atualizado = document.getElementById('rdValAtualizado')?.checked;
+  const lblA = document.getElementById('lblValAtualizado');
+  const lblO = document.getElementById('lblValOriginal');
+  if(lblA) lblA.style.border = atualizado ? '2px solid #2e7d32' : '2px solid #ccc';
+  if(lblO) lblO.style.border = atualizado ? '2px solid #ccc' : '2px solid var(--gold)';
+  // Re-gerar preview se já houver petições
+  if(peticoesGeradas.length) filtrarPreview();
+}
+
+// Parseia data: objeto Date nativo, DD/MM/AAAA, AAAA-MM-DD ou serial Excel
+function parseDate(v){
+  if(v === null || v === undefined || v === '') return null;
+  if(v instanceof Date) return isNaN(v) ? null : v;
+
+  // Número ou string puramente numérica → serial Excel
+  const asNum = typeof v === 'number' ? v : (String(v).trim().match(/^\d{4,6}$/) ? +v : NaN);
+  if(!isNaN(asNum) && asNum > 0){
+    // Corrigir bug Excel: 1900 não é ano bissexto (serial 60 = 29/02/1900 inexistente)
+    const serial = asNum > 59 ? asNum - 1 : asNum;
+    // Base Excel: 1 = 01/01/1900 → em milissegundos UTC desde 1970-01-01:
+    // dias desde 1900-01-01 = serial - 1; dias desde 1970-01-01 = serial - 1 - 25568
+    const msUtc = (serial - 1 - 25568) * 86400000;
+    // Usar UTC para evitar desvio de timezone (DST / UTC-3)
+    const d = new Date(msUtc);
+    if(!isNaN(d)) return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    return null;
+  }
+
+  const s = String(v).trim();
+  if(!s) return null;
+
+  // DD/MM/AAAA ou DD-MM-AAAA (ano exatamente 4 dígitos)
+  let m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if(m){ const yr=+m[3]; if(yr >= 1900 && yr <= 2200) return new Date(yr, +m[2]-1, +m[1]); }
+
+  // AAAA/MM/DD ou AAAA-MM-DD
+  m = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if(m){ const yr=+m[1]; if(yr >= 1900 && yr <= 2200) return new Date(yr, +m[2]-1, +m[3]); }
+
+  return null; // rejeitar formatos inválidos (ex: "45381" com 5 dígitos não cai aqui)
+}
+
+// Meses fracionados entre duas datas (calendário real)
+function diffMeses(ini, fim){
+  if(!ini||!fim) return 0;
+  const anosCompletos  = fim.getFullYear() - ini.getFullYear();
+  const mesesCompletos = fim.getMonth()    - ini.getMonth();
+  let totalMeses = anosCompletos * 12 + mesesCompletos;
+  // Ajuste de dias: se dia do fim < dia do início, ainda não completou o mês
+  const diasIni = ini.getDate(), diasFim = fim.getDate();
+  if(diasFim < diasIni){
+    totalMeses -= 1;
+    // Fração do mês: quantos dias do mês anterior já passaram
+    const ultimoDiaMesAnterior = new Date(fim.getFullYear(), fim.getMonth(), 0).getDate();
+    const diasDecorridos = ultimoDiaMesAnterior - diasIni + diasFim;
+    totalMeses += diasDecorridos / ultimoDiaMesAnterior;
+  } else if(diasFim > diasIni){
+    const diasNoMes = new Date(fim.getFullYear(), fim.getMonth()+1, 0).getDate();
+    totalMeses += (diasFim - diasIni) / diasNoMes;
+  }
+  return Math.max(0, totalMeses);
+}
+
+// Formata Date → DD/MM/AAAA
+function fmtData(d){ if(!d) return '—'; return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
+
+// Parseia percentual que vem do Excel:
+// Excel armazena "50%" internamente como 0.5 — já é o decimal correto
+// Se vier como string "50%" ou "50", converte para decimal
+function parsePerc(v){
+  if(v===null||v===undefined||v==='') return null;
+  if(typeof v === 'number') return v; // já é decimal (0.5 = 50%)
+  const s = String(v).trim().replace('%','').replace(',','.');
+  const n = parseFloat(s);
+  if(isNaN(n)) return null;
+  // Se veio como string "50" (sem %), assume que é percentual → /100
+  return n > 1 ? n/100 : n;
+}
+
+function calcularAtualizacao(){
+  if(!registros.length){ toast('Importe os dados primeiro.','err'); goTo('v-dados'); return; }
+
+  const fator = (parseFloat(document.getElementById('atFatorMes').value) || 1.00) / 100;
+  const erros = [];
+
+  atDados = registros.map(r => {
+    const principal = parseVal(r.valor);
+
+    // Data de vencimento: coluna "vencimento"
+    const dataVenc = parseDate(r.vencimento);
+
+    // Data de atualização: coluna "data da atualizacao" ou "data_atualizacao"
+    const dataAtRaw = r['data da atualizacao'] || r['data_atualizacao'] || r['data da atualização'] || r['datadaatualizacao'] || r['dataatualizacao'];
+    const dataAt    = parseDate(dataAtRaw);
+
+    if(!dataVenc){
+      erros.push(`Linha ${r._l} (${r.executado}): coluna "vencimento" ausente ou inválida`);
+      return null;
+    }
+    if(!dataAt){
+      erros.push(`Linha ${r._l} (${r.executado}): coluna "data da atualizacao" ausente ou inválida`);
+      return null;
+    }
+
+    // Multa e honorários lidos da planilha (por linha)
+    const multaDec = parsePerc(r.multa);
+    const honorDec = parsePerc(r.honorarios || r['honorariosadvocaticios'] || r['honorários advocatícios']);
+
+    const meses    = diffMeses(dataVenc, dataAt);
+    const correcao = principal * Math.pow(1 + fator, meses);
+    const vJuros   = correcao - principal;
+    const vMulta   = multaDec != null ? principal * multaDec : 0;
+    const baseHon  = correcao + vMulta;
+    const vHonor   = honorDec != null ? baseHon * honorDec : 0;
+    const total    = correcao + vMulta + vHonor;
+
+    return {
+      executado : r.executado,
+      cliente   : r.cliente,
+      comarca   : r.comarca,
+      principal, dataVenc, dataAt, meses,
+      fatorPerc : (fator*100).toFixed(2),
+      vJuros, correcao,
+      multaPerc : multaDec, vMulta,
+      honorPerc : honorDec, vHonor,
+      total,
+    };
+  }).filter(Boolean);
+
+  if(erros.length){
+    toast(`⚠️ ${erros.length} linha(s) com erro — veja console.`,'err');
+    console.warn('Erros Atualização:', erros.join('\n'));
+  }
+  if(!atDados.length){ toast('Nenhum registro válido para calcular.','err'); return; }
+  renderAtTabela();
+  // Exibir aviso na tela Gerar Petições
+  const avBanner=document.getElementById('atAviso');
+  if(avBanner) avBanner.style.display='block';
+  toast(`✅ ${atDados.length} débitos calculados! Valores prontos para uso nas petições.`,'ok');
+}
+
+function renderAtTabela(){
+  document.getElementById('atResult').style.display   = 'block';
+  document.getElementById('atSemDados').style.display = 'none';
+
+  const totPrincipal = atDados.reduce((a,d)=>a+d.principal, 0);
+  const totJuros     = atDados.reduce((a,d)=>a+d.vJuros,    0);
+  const totMulta     = atDados.reduce((a,d)=>a+d.vMulta,    0);
+  const totHonor     = atDados.reduce((a,d)=>a+d.vHonor,    0);
+  const totFinal     = atDados.reduce((a,d)=>a+d.total,     0);
+
+  document.getElementById('atStats').innerHTML=`
+    <div class="stat"><div class="stat-val">${atDados.length}</div><div class="stat-label">Registros</div></div>
+    <div class="stat"><div class="stat-val">${fmtV(totPrincipal)}</div><div class="stat-label">Total Principal</div></div>
+    <div class="stat"><div class="stat-val" style="color:#2e7d32;">${fmtV(totFinal-totPrincipal)}</div><div class="stat-label">Total Acréscimos</div></div>
+    <div class="stat"><div class="stat-val" style="color:var(--gold);">${fmtV(totFinal)}</div><div class="stat-label">Total Final Atualizado</div></div>`;
+
+  const temHonor = atDados.some(d=>d.vHonor>0);
+  const thH = temHonor ? '<th>Honorários Adv.</th>' : '';
+  const tdH = d => temHonor
+    ? `<td style="font-family:'DM Mono',monospace;">${d.honorPerc!=null ? fmtV(d.vHonor)+' <small style=\"color:var(--muted);\">('+pctStr(d.honorPerc)+')</small>' : '—'}</td>`
+    : '';
+
+  function pctStr(dec){ return dec!=null ? (dec*100).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:1})+'%' : '—'; }
+
+  document.getElementById('atTabela').innerHTML=`<table>
+    <thead><tr>
+      <th>#</th><th>Executado</th><th>Comarca</th>
+      <th>Valor Principal</th><th>Dt. Vencimento</th>
+      <th>Dt. Atualização</th><th>Meses</th>
+      <th>Juros (${atDados[0]?.fatorPerc}% a.m.)</th>
+      <th>Valor Corrigido</th>
+      <th>Multa</th>${thH}
+      <th style="background:var(--gold);color:#fff;">Valor Final</th>
+    </tr></thead>
+    <tbody>${atDados.map((d,i)=>`<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(d.executado)}</strong></td>
+      <td>${esc(d.comarca)}</td>
+      <td style="font-family:'DM Mono',monospace;">${fmtV(d.principal)}</td>
+      <td style="text-align:center;font-family:'DM Mono',monospace;">${fmtData(d.dataVenc)}</td>
+      <td style="text-align:center;font-family:'DM Mono',monospace;">${fmtData(d.dataAt)}</td>
+      <td style="text-align:center;">${d.meses.toFixed(1)}</td>
+      <td style="font-family:'DM Mono',monospace;">${fmtV(d.vJuros)}</td>
+      <td style="font-family:'DM Mono',monospace;">${fmtV(d.correcao)}</td>
+      <td style="font-family:'DM Mono',monospace;">${d.multaPerc!=null ? fmtV(d.vMulta)+' <small style="color:var(--muted);">('+pctStr(d.multaPerc)+')</small>' : '—'}</td>
+      ${tdH(d)}
+      <td style="font-family:'DM Mono',monospace;font-weight:700;color:var(--gold);">${fmtV(d.total)}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr>
+      <td colspan="3" style="font-weight:700;text-align:right;padding-right:.8rem;">TOTAIS</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace;">${fmtV(totPrincipal)}</td>
+      <td colspan="3"></td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace;">${fmtV(totJuros)}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace;">${fmtV(atDados.reduce((a,d)=>a+d.correcao,0))}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace;">${fmtV(totMulta)}</td>
+      ${temHonor?`<td style="font-weight:700;font-family:'DM Mono',monospace;">${fmtV(totHonor)}</td>`:''}
+      <td style="font-weight:700;font-family:'DM Mono',monospace;color:var(--gold);">${fmtV(totFinal)}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
+// ════════════════════════════════════════════════════
+// PLANILHA DE DÉBITOS JUDICIAIS — PDF por executado
+// Layout baseado no modelo TJSP (INPC/IPCA-15 Lei 14905)
+// ════════════════════════════════════════════════════
+function gerarPDFsDebitos(){
+  if(!atDados.length){ toast('Calcule a atualização primeiro.','err'); return; }
+  const {jsPDF} = window.jspdf;
+  const fator = (parseFloat(document.getElementById('atFatorMes').value) || 1.00) / 100;
+  const fatorPct = (fator*100).toFixed(2).replace('.',',');
+
+  // Gerar um PDF por executado e oferecer download de cada um
+  const links = [];
+
+  atDados.forEach((d, idx) => {
+    const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+    const W = 210, H = 297;
+    const mL = 20, mR = 20, mT = 15, mB = 15;
+    const cW = W - mL - mR;  // 170mm de largura útil
+
+    // ── Paleta ──
+    const GOLD   = [184, 150, 62];
+    const DARK   = [30,  30,  30];
+    const GRAY   = [100, 100, 100];
+    const LGRAY  = [220, 220, 220];
+    const CREAM  = [252, 248, 240];
+    const HBKG   = [40,  40,  40];
+    const WHITE  = [255, 255, 255];
+    const GREEN  = [30, 120, 50];
+
+    let y = mT;
+
+    // ── TÍTULO ──
+    pdf.setFillColor(...HBKG);
+    pdf.rect(mL, y, cW, 10, 'F');
+    pdf.setTextColor(...WHITE);
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(12);
+    pdf.text('PLANILHA DE DÉBITOS JUDICIAIS', W/2, y+6.5, {align:'center'});
+    y += 13;
+
+    // ── Cabeçalho informativo ──
+    pdf.setTextColor(...DARK);
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(8);
+
+    // Data de atualização
+    const mesAno = d.dataAt ? d.dataAt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : '—';
+    const mesAnoUC = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+    pdf.text(`Data de atualização dos valores: ${mesAnoUC}`, mL, y+4);
+    y += 5;
+    pdf.text('Indexador utilizado: TJSP (INPC/IPCA-15 - Lei 14905)', mL, y+4);
+    y += 5;
+    pdf.text(`Juros moratórios simples de ${fatorPct}% ao mês - a partir de ${fmtData(d.dataVenc)}`, mL, y+4);
+    y += 5;
+    const multaPct = d.multaPerc != null ? (d.multaPerc*100).toFixed(2).replace('.',',')+'%' : '0,00%';
+    const honPct   = d.honorPerc != null ? (d.honorPerc*100).toFixed(2).replace('.',',')+'%' : '0,00%';
+    pdf.text(`Acréscimo de ${multaPct} referente a multa.`, mL, y+4);
+    y += 5;
+    pdf.text(`Honorários advocatícios de ${honPct}${d.vHonor <= 0 ? ' - (não aplicável)' : ''}.`, mL, y+4);
+    y += 8;
+
+    // ── Linha dourada separadora ──
+    pdf.setDrawColor(...GOLD);
+    pdf.setLineWidth(0.6);
+    pdf.line(mL, y, mL+cW, y);
+    pdf.setLineWidth(0.2);
+    y += 4;
+
+    // ── Dados do devedor ──
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(...DARK);
+    pdf.text('DEVEDOR:', mL, y+3.5);
+    pdf.setFont('helvetica','normal');
+    pdf.text(d.executado, mL+22, y+3.5);
+    y += 5;
+    pdf.setFont('helvetica','bold');
+    pdf.text('CREDOR:', mL, y+3.5);
+    pdf.setFont('helvetica','normal');
+    pdf.text(d.cliente || '—', mL+22, y+3.5);
+    y += 5;
+    pdf.setFont('helvetica','bold');
+    pdf.text('COMARCA:', mL, y+3.5);
+    pdf.setFont('helvetica','normal');
+    pdf.text(d.comarca || '—', mL+22, y+3.5);
+    y += 8;
+
+    // ── TABELA ──
+    // Colunas: ITEM | DESCRIÇÃO | DATA | VALOR SINGELO | VALOR ATUALIZADO | JUROS | MULTA | [HONOR] | TOTAL
+    const temHonor = d.vHonor > 0;
+    // Larguras das colunas em mm
+    const cols = temHonor
+      ? [10, 36, 22, 24, 24, 18, 18, 18, 20]  // 190 total → recalcular para 170
+      : [10, 44, 22, 26, 26, 18, 18,     26];  // sem honor
+    // Normalizar para cW
+    const somaCols = cols.reduce((a,b)=>a+b,0);
+    const colsN = cols.map(c => c * cW / somaCols);
+
+    // Cabeçalho da tabela
+    const TH = 8;
+    pdf.setFillColor(...HBKG);
+    let cx = mL;
+    pdf.rect(mL, y, cW, TH, 'F');
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(...WHITE);
+
+    const headers = temHonor
+      ? ['#','ITEM DESCRIÇÃO','DATA','VALOR\nSINGELO','VALOR\nATUALIZADO',`JUROS\n${fatorPct}% a.m.`,'MULTA\n'+multaPct,'HONOR.\n'+honPct,'TOTAL']
+      : ['#','ITEM DESCRIÇÃO','DATA','VALOR\nSINGELO','VALOR\nATUALIZADO',`JUROS\n${fatorPct}% a.m.`,'MULTA\n'+multaPct,'TOTAL'];
+
+    headers.forEach((h,i)=>{
+      const lines = h.split('\n');
+      const x = cx + colsN[i]/2;
+      if(lines.length>1){
+        pdf.text(lines[0], x, y+3.5, {align:'center'});
+        pdf.text(lines[1], x, y+6.5, {align:'center'});
+      } else {
+        pdf.text(h, x, y+TH/2+1, {align:'center'});
+      }
+      cx += colsN[i];
+    });
+    y += TH;
+
+    // ── Linha de dados: Principal ──
+    // Cálculo por parcela — só temos o total, então exibimos como linha única
+    const TR = 7;
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(7.5);
+
+    function drawRow(rowData, bgColor, textColor, yRow, bold){
+      pdf.setFillColor(...bgColor);
+      pdf.rect(mL, yRow, cW, TR, 'F');
+      pdf.setTextColor(...textColor);
+      if(bold) pdf.setFont('helvetica','bold');
+      else pdf.setFont('helvetica','normal');
+
+      let rx = mL;
+      rowData.forEach((cell,i)=>{
+        const isNum = typeof cell === 'number' || (typeof cell === 'string' && cell.startsWith('R$'));
+        const align = (i===1) ? 'left' : (i===0 ? 'center' : 'right');
+        const tx = (align==='left') ? rx+1.5 : (align==='right') ? rx+colsN[i]-1.5 : rx+colsN[i]/2;
+        pdf.text(String(cell), tx, yRow+TR/2+1.5, {align});
+        rx += colsN[i];
+      });
+      // Bordas laterais suaves
+      pdf.setDrawColor(...LGRAY);
+      pdf.setLineWidth(0.1);
+      pdf.line(mL, yRow+TR, mL+cW, yRow+TR);
+    }
+
+    function fR(v){ return 'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+
+    // Linha 1: Valor Original (principal)
+    const rowPrincipal = [1, 'VALOR PRINCIPAL', fmtData(d.dataVenc),
+      fR(d.principal), fR(d.correcao), fR(d.vJuros), fR(d.vMulta)
+    ];
+    if(temHonor) rowPrincipal.push(fR(d.vHonor));
+    rowPrincipal.push(fR(d.total));
+    drawRow(rowPrincipal, WHITE, DARK, y, false);
+    y += TR;
+
+    // ── Linha TOTAIS ──
+    const rowTotais = ['', 'TOTAIS', '',
+      fR(d.principal), fR(d.correcao), fR(d.vJuros), fR(d.vMulta)
+    ];
+    if(temHonor) rowTotais.push(fR(d.vHonor));
+    rowTotais.push(fR(d.total));
+    drawRow(rowTotais, [245,245,240], DARK, y, true);
+    y += TR;
+
+    // Linha dourada fina
+    pdf.setDrawColor(...GOLD);
+    pdf.setLineWidth(0.5);
+    pdf.line(mL, y, mL+cW, y);
+    pdf.setLineWidth(0.2);
+    y += 5;
+
+    // ── Subtotal e Total Geral ──
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(...GRAY);
+    pdf.text('Subtotal', mL + cW - 60, y+3);
+    pdf.setFont('helvetica','bold');
+    pdf.setTextColor(...DARK);
+    pdf.text(fR(d.correcao + d.vMulta + d.vHonor), mL + cW, y+3, {align:'right'});
+    y += 7;
+
+    // Linha separadora antes do total
+    pdf.setDrawColor(...LGRAY);
+    pdf.setLineWidth(0.3);
+    pdf.line(mL + cW - 65, y, mL+cW, y);
+    y += 1;
+    pdf.setDrawColor(...LGRAY);
+    pdf.line(mL + cW - 65, y, mL+cW, y);
+    y += 4;
+
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(...DARK);
+    pdf.text('TOTAL GERAL', mL + cW - 60, y+3.5);
+    pdf.setTextColor(...GREEN);
+    pdf.setFontSize(10);
+    pdf.text(fR(d.total), mL + cW, y+3.5, {align:'right'});
+    y += 10;
+
+    // ── Detalhamento do cálculo ──
+    pdf.setDrawColor(...GOLD);
+    pdf.setLineWidth(0.4);
+    pdf.line(mL, y, mL+cW, y);
+    y += 4;
+
+    pdf.setFont('helvetica','bold');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text('MEMÓRIA DE CÁLCULO', mL, y+3);
+    y += 6;
+
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...DARK);
+
+    const meses = d.meses.toFixed(2).replace('.',',');
+    const linhasCalc = [
+      `Valor Principal:           ${fR(d.principal)}`,
+      `Data de Vencimento:        ${fmtData(d.dataVenc)}`,
+      `Data de Atualização:       ${fmtData(d.dataAt)}`,
+      `Período:                   ${meses} meses`,
+      `Fórmula Juros:             Principal × [(1 + ${fatorPct}%)^${meses} − 1] = ${fR(d.vJuros)}`,
+      `Valor Corrigido:           Principal + Juros = ${fR(d.correcao)}`,
+      `Multa (${multaPct}):       Principal × ${multaPct} = ${fR(d.vMulta)}`,
+    ];
+    if(d.vHonor > 0){
+      linhasCalc.push(`Honorários (${honPct}):   (Corrigido + Multa) × ${honPct} = ${fR(d.vHonor)}`);
+    }
+    linhasCalc.push(``, `TOTAL = Corrigido + Multa${d.vHonor>0?' + Honorários':''} = ${fR(d.total)}`);
+
+    linhasCalc.forEach(ln => {
+      if(!ln){ y += 2; return; }
+      pdf.text(ln, mL, y+3);
+      y += 5;
+    });
+
+    // ── Rodapé ──
+    y = H - mB - 8;
+    pdf.setDrawColor(...GOLD);
+    pdf.setLineWidth(0.3);
+    pdf.line(mL, y, mL+cW, y);
+    y += 3;
+    pdf.setFont('helvetica','normal');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(...GRAY);
+    pdf.text(`Documento gerado em ${new Date().toLocaleDateString('pt-BR')} | LexAuto Pro | Juros TJSP 1% a.m. compostos | INPC/IPCA-15 — Lei nº 14.905/2024`, W/2, y+3, {align:'center'});
+
+    // Salvar
+    const nomeSafe = d.executado.replace(/[^a-zA-Z0-9À-ú\s]/g,'').replace(/\s+/g,'_').toUpperCase();
+    const filename = `Debito_${nomeSafe}.pdf`;
+    links.push({pdf, filename, nome: d.executado, total: d.total});
+  });
+
+  // Baixar todos os PDFs + mostrar links individuais
+  const container = document.getElementById('atPdfLinks');
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="info-box" style="border-color:#a8d5a2;background:#f0faf3;padding:.8rem 1rem;">
+      <strong>✅ ${links.length} PDF${links.length>1?'s':''} gerado${links.length>1?'s':''}:</strong>
+      <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem;">
+        ${links.map((l,i)=>`<button class="btn btn-outline btn-sm" id="pdflink_${i}" style="font-size:.75rem;">
+          📄 ${l.nome.split(' ')[0]} — ${fmtV(l.total)}
+        </button>`).join('')}
+      </div>
+    </div>`;
+
+  // Bind download events
+  links.forEach((l,i)=>{
+    document.getElementById('pdflink_'+i).onclick = () => {
+      l.pdf.save(l.filename);
+    };
+  });
+
+  // Se for só 1, baixar automaticamente
+  if(links.length === 1) links[0].pdf.save(links[0].filename);
+  toast(`✅ ${links.length} PDF${links.length>1?'s gerados':'  gerado'}!`,'ok');
+}
+
+function exportarAtualizacao(){
+  if(!atDados.length){ toast('Calcule antes de exportar.','err'); return; }
+  const n = v => Math.round(v*100)/100;
+  const pct = v => v!=null ? parseFloat((v*100).toFixed(4)) : '';
+  const temHonor = atDados.some(d=>d.vHonor>0);
+
+  const header = [
+    'Executado','Cliente','Comarca',
+    'Valor Principal (R$)','Data de Vencimento','Data de Atualização','Meses em Atraso',
+    `Juros ${atDados[0]?.fatorPerc}% a.m. (R$)`,'Valor Corrigido (R$)',
+    'Multa % (da planilha)','Multa (R$)',
+  ];
+  if(temHonor) header.push('Honorários % (da planilha)','Honorários Adv. (R$)');
+  header.push('Valor Final Atualizado (R$)');
+
+  // Converter Date JS para serial Excel (para exportar como data real, não string)
+  const toExcelDate = d => {
+    if(!d) return '';
+    // Serial Excel = dias desde 01/01/1900 (com correção do bug 1900)
+    const msPerDia = 86400000;
+    const base = Date.UTC(1899, 11, 30); // 30/12/1899 em UTC = dia 0 do Excel
+    return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - base) / msPerDia);
+  };
+  const rows = atDados.map(d=>{
+    const row = [
+      d.executado, d.cliente, d.comarca,
+      n(d.principal), toExcelDate(d.dataVenc), toExcelDate(d.dataAt),
+      parseFloat(d.meses.toFixed(2)),
+      n(d.vJuros), n(d.correcao),
+      pct(d.multaPerc), n(d.vMulta),
+    ];
+    if(temHonor) row.push(pct(d.honorPerc), n(d.vHonor));
+    row.push(n(d.total));
+    return row;
+  });
+
+  // Totais
+  const tot = ['TOTAL','','', n(atDados.reduce((a,d)=>a+d.principal,0)),'','','',
+    n(atDados.reduce((a,d)=>a+d.vJuros,0)),
+    n(atDados.reduce((a,d)=>a+d.correcao,0)),
+    '', n(atDados.reduce((a,d)=>a+d.vMulta,0)),
+  ];
+  if(temHonor) tot.push('', n(atDados.reduce((a,d)=>a+d.vHonor,0)));
+  tot.push(n(atDados.reduce((a,d)=>a+d.total,0)));
+
+  const fator = (parseFloat(document.getElementById('atFatorMes').value)||1)/100;
+  const info  = [`Juros de Mora TJSP: ${(fator*100).toFixed(2)}% a.m. (compostos) | Multa e Honorários individuais por linha da planilha | Gerado em: ${new Date().toLocaleDateString('pt-BR')}`];
+
+  const wb = XLSX.utils.book_new();
+  const wsData = [header,...rows,[],tot,[],info];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Larguras
+  ws['!cols']=[{wch:36},{wch:32},{wch:18},{wch:20},{wch:16},{wch:16},{wch:10},{wch:18},{wch:20},{wch:14},{wch:14}];
+  if(temHonor) ws['!cols'].push({wch:14},{wch:18});
+  ws['!cols'].push({wch:24});
+
+  const numFmt  = '#,##0.00';
+  const dateFmt = 'dd/mm/yyyy';
+  const numIdx  = temHonor ? [3,7,8,10,12,13] : [3,7,8,10,11];
+  const dateIdx = [4, 5]; // colunas E e F = Data de Vencimento e Data de Atualização
+
+  for(let r=2;r<=rows.length+1;r++){
+    numIdx.forEach(ci=>{
+      const col = String.fromCharCode(65+ci);
+      const cell = ws[col+r];
+      if(cell) cell.z = numFmt;
+    });
+    dateIdx.forEach(ci=>{
+      const col = String.fromCharCode(65+ci);
+      const cell = ws[col+r];
+      if(cell){ cell.t = 'n'; cell.z = dateFmt; }
+    });
+  }
+  const ti = rows.length+3;
+  numIdx.forEach(ci=>{ const col=String.fromCharCode(65+ci); const c=ws[col+ti]; if(c) c.z=numFmt; });
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Atualização de Valores');
+
+  // Aba parâmetros
+  const wsP=XLSX.utils.aoa_to_sheet([
+    ['Parâmetro','Valor'],
+    ['Juros de Mora TJSP (% a.m.)',(fator*100).toFixed(2)+'%'],
+    ['Multa por linha','Lida da coluna "multa" da planilha'],
+    ['Honorários por linha','Lida da coluna "honorarios" da planilha'],
+    ['Fórmula Correção','Principal × (1 + Juros%)^Meses'],
+    ['Fórmula Multa','Principal × Multa%'],
+    ['Fórmula Honorários','(Corrigido + Multa) × Hon.%'],
+    ['Fórmula Valor Final','Corrigido + Multa + Honorários'],
+    ['Data do cálculo', new Date().toLocaleDateString('pt-BR')],
+  ]);
+  wsP['!cols']=[{wch:35},{wch:45}];
+  XLSX.utils.book_append_sheet(wb, wsP, 'Parâmetros');
+
+  XLSX.writeFile(wb,`atualizacao_valores_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('✅ Planilha exportada!','ok');
+}
+
+function copiarAtualizacao(){
+  if(!atDados.length){ toast('Calcule antes de copiar.','err'); return; }
+  const temHonor = atDados.some(d=>d.vHonor>0);
+  const fmtN = v=>v.toFixed(2).replace('.',',');
+  const pct  = v=>v!=null?(v*100).toFixed(1)+'%':'—';
+  const header = ['Executado','Comarca','Principal','Dt.Venc','Dt.Atual','Meses','Juros','Corrigido','Multa%','Multa'];
+  if(temHonor) header.push('Honor%','Honorários');
+  header.push('Total Final');
+  const rows = atDados.map(d=>{
+    const r=[d.executado,d.comarca,fmtN(d.principal),fmtData(d.dataVenc),fmtData(d.dataAt),d.meses.toFixed(1),fmtN(d.vJuros),fmtN(d.correcao),pct(d.multaPerc),fmtN(d.vMulta)];
+    if(temHonor) r.push(pct(d.honorPerc),fmtN(d.vHonor));
+    r.push(fmtN(d.total));
+    return r;
+  });
+  navigator.clipboard.writeText([header,...rows].map(r=>r.join('\t')).join('\n'))
+    .then(()=>toast('Tabela copiada!','ok')).catch(()=>toast('Erro ao copiar.','err'));
+}
+
+// ════════════════════════════════════════════════════
+// EXEMPLO XLSX
+// ════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
+// EXEMPLO XLSX
+// ════════════════════════════════════════════════════
+function downloadExemplo(){
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['comarca','cliente','executado','cpf','endereco','valor','vencimento','multa','honorarios','data da atualizacao'],
+    ['São Paulo','Empresa ABC Ltda','João da Silva','123.456.789-00','Rua das Flores, 123, Bela Vista, São Paulo/SP','15000,00','15/04/2023',0.5,0.2,'13/03/2026'],
+    ['Campinas','Empresa ABC Ltda','Maria Oliveira','987.654.321-99','Av. Brasil, 500, Centro, Campinas/SP','8500,50','20/09/2022',0.3,0.2,'13/03/2026'],
+    ['Santos','Tech Soluções SA','Pedro Ferreira','111.222.333-44','Rua do Porto, 88, Gonzaga, Santos/SP','32000','01/01/2024',0.5,null,'13/03/2026'],
+    ['Ribeirão Preto','Comércio XYZ ME','Ana Costa','222.333.444-55','Av. Independência, 200, Centro, Ribeirão Preto/SP','19750','10/06/2023',0.3,0.2,'13/03/2026'],
+  ]);
+  // Aplicar formato % nas colunas H (multa) e I (honorarios)
+  ['H2','H3','H4','H5','I2','I3','I4','I5'].forEach(c=>{if(ws[c])ws[c].z='0%';});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Execuções');
+  XLSX.writeFile(wb,'modelo_execucoes.xlsx');toast('Planilha de exemplo baixada!');
+}
+</script>
+</body>
+</html>

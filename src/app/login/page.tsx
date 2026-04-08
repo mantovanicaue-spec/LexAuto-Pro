@@ -5,31 +5,49 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessMsg("");
 
-    // Se estivermos mockados
+    // Se estivermos mockados no ambiente de dev
     if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder")) {
       router.push("/");
       return;
     }
 
-    const { error: signUpError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    if (isRegistering) {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    if (signUpError) {
-      setError(signUpError.message);
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        setSuccessMsg("Conta criada com sucesso! Faça login ou verifique seu e-mail.");
+        setIsRegistering(false);
+      }
       setLoading(false);
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+      }
     }
   };
 
@@ -51,8 +69,14 @@ export default function LoginPage() {
             {error}
           </div>
         )}
+        
+        {successMsg && (
+          <div className="bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32] text-xs p-3 rounded mb-4">
+            {successMsg}
+          </div>
+        )}
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleAuth} className="space-y-5">
           <div>
             <label className="block text-[0.72rem] font-semibold text-muted mb-1.5 tracking-wider uppercase">E-mail Corporativo</label>
             <input 
@@ -78,14 +102,20 @@ export default function LoginPage() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-[3px] text-sm font-semibold tracking-wider uppercase bg-gold text-white hover:bg-gold-light transition-all shadow-md mt-2 disabled:opacity-50"
+            className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-[3px] text-sm font-semibold tracking-wider uppercase text-white transition-all shadow-md mt-2 disabled:opacity-50 ${isRegistering ? 'bg-ink hover:bg-black' : 'bg-gold hover:bg-gold-light'}`}
           >
-            {loading ? "Entrando..." : "Acessar Plataforma"}
+            {loading ? "Processando..." : (isRegistering ? "Criar Conta Segura" : "Acessar Plataforma")}
           </button>
         </form>
 
         <div className="mt-6 text-center text-xs text-muted">
-           Ainda não tem conta? <a href="#" className="text-gold font-semibold underline">Fazer assinatura</a>
+           {isRegistering ? "Já tem sua conta?" : "Ainda não tem conta?"} 
+           <button 
+             onClick={() => { setIsRegistering(!isRegistering); setError(""); setSuccessMsg(""); }}
+             className="text-gold font-semibold underline ml-1 cursor-pointer bg-transparent border-none"
+           >
+             {isRegistering ? "Faça login" : "Criar acesso restrito"}
+           </button>
         </div>
       </div>
     </div>
